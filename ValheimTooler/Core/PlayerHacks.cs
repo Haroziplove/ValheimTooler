@@ -76,27 +76,33 @@ namespace ValheimTooler.Core
             AddGuardianPower(powers, "$se_fader_name", "GP_Fader");
             AddGuardianPower(powers, "$se_kall_name", "GP_Kall");
 
-            if (ObjectDB.instance != null && ObjectDB.instance.m_StatusEffects != null)
+            try
             {
-                foreach (StatusEffect statusEffect in ObjectDB.instance.m_StatusEffects)
+                if (ObjectDB.instance != null && ObjectDB.instance.m_StatusEffects != null)
                 {
-                    if (statusEffect == null || string.IsNullOrEmpty(statusEffect.name) || !statusEffect.name.StartsWith("GP_"))
+                    foreach (StatusEffect statusEffect in ObjectDB.instance.m_StatusEffects)
                     {
-                        continue;
-                    }
-                    if (powers.Values.Contains(statusEffect.name))
-                    {
-                        continue;
-                    }
+                        if (statusEffect == null || string.IsNullOrEmpty(statusEffect.name) || !statusEffect.name.StartsWith("GP_"))
+                        {
+                            continue;
+                        }
+                        if (powers.Values.Contains(statusEffect.name))
+                        {
+                            continue;
+                        }
 
-                    string displayName = string.IsNullOrEmpty(statusEffect.m_name)
-                        ? statusEffect.name
-                        : Localization.instance.Localize(statusEffect.m_name);
-                    if (!powers.ContainsKey(displayName))
-                    {
-                        powers.Add(displayName, statusEffect.name);
+                        string displayName = string.IsNullOrEmpty(statusEffect.m_name)
+                            ? statusEffect.name
+                            : Localization.instance.Localize(statusEffect.m_name);
+                        if (!powers.ContainsKey(displayName))
+                        {
+                            powers.Add(displayName, statusEffect.name);
+                        }
                     }
                 }
+            }
+            catch (Exception)
+            {
             }
 
             return powers;
@@ -115,10 +121,20 @@ namespace ValheimTooler.Core
 
         public static void Update()
         {
-            if (!s_guardianPowersRefreshedFromDb && ObjectDB.instance != null && ObjectDB.instance.m_StatusEffects != null && ObjectDB.instance.m_StatusEffects.Count > 0)
+            if (!s_guardianPowersRefreshedFromDb && ObjectDB.instance != null)
             {
-                s_guardianPowers = BuildGuardianPowers();
-                s_guardianPowersRefreshedFromDb = true;
+                try
+                {
+                    if (ObjectDB.instance.m_StatusEffects != null && ObjectDB.instance.m_StatusEffects.Count > 0)
+                    {
+                        s_guardianPowers = BuildGuardianPowers();
+                        s_guardianPowersRefreshedFromDb = true;
+                    }
+                }
+                catch (Exception)
+                {
+                    s_guardianPowersRefreshedFromDb = true;
+                }
             }
 
             if (Time.time >= s_actionTimer)
