@@ -353,7 +353,7 @@ namespace ValheimTooler.Core
                 compiler.SetFieldValue("m_modifiedPaint", modifiedPaint);
 
                 compiler.CallMethod("Save");
-                heightmap.Poke(true);
+                heightmap.Poke(1, true);
 
                 // Push new terrain data to all clients.
                 var zdo = compiler.GetComponent<ZNetView>().GetZDO();

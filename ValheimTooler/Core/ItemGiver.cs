@@ -20,6 +20,7 @@ namespace ValheimTooler.Core
         private static string s_qualityItem = "1";
         private static string s_searchTerms = "";
         private static string s_previousSearchTerms = "";
+        private static Texture2D s_placeholderIcon;
 
         public static void Start()
         {
@@ -32,28 +33,66 @@ namespace ValheimTooler.Core
 
             foreach (GameObject gameObject in ObjectDB.instance.m_items)
             {
-                ItemDrop component = gameObject.GetComponent<ItemDrop>();
-
-                if (component.m_itemData?.m_shared?.m_icons?.Length <= 0)
-                    continue;
-
-                for (var variant = 0; variant < component.m_itemData.m_shared.m_icons.Length; variant++)
+                if (gameObject == null)
                 {
-                    try
-                    {
-                        Texture texture = SpriteManager.TextureFromSprite(component.m_itemData.m_shared.m_icons[variant]);
-                        var content = new GUIContent(texture, Localization.instance.Localize(component.m_itemData.m_shared.m_name + (variant > 0 ? " Variant " + variant.ToString() : "")));
-                        var inventoryItem = new InventoryItem(gameObject, component, content, variant);
-                        s_itemsGUIFiltered.Add(content);
-                        s_items.Add(inventoryItem);
-                        s_itemsFiltered.Add(inventoryItem);
-                    } catch
-                    {
-                        ZLog.Log($"[ValheimTooler - ItemGiver] Failed to load item {component.m_itemData.m_shared.m_name} with variant {variant}. This item will be ignored.");
-                        continue;
-                    }
+                    continue;
+                }
+
+                ItemDrop component = gameObject.GetComponent<ItemDrop>();
+                if (component?.m_itemData?.m_shared == null)
+                {
+                    continue;
+                }
+
+                Sprite[] icons = component.m_itemData.m_shared.m_icons;
+                int variantCount = icons != null && icons.Length > 0 ? icons.Length : 1;
+
+                for (var variant = 0; variant < variantCount; variant++)
+                {
+                    string displayName = Localization.instance.Localize(component.m_itemData.m_shared.m_name + (variant > 0 ? " Variant " + variant.ToString() : ""));
+                    Texture texture = GetItemTexture(icons, variant);
+                    var content = new GUIContent(texture, displayName);
+                    var inventoryItem = new InventoryItem(gameObject, component, content, variant);
+                    s_itemsGUIFiltered.Add(content);
+                    s_items.Add(inventoryItem);
+                    s_itemsFiltered.Add(inventoryItem);
                 }
             }
+        }
+
+        private static Texture GetItemTexture(Sprite[] icons, int variant)
+        {
+            if (icons == null || variant < 0 || variant >= icons.Length)
+            {
+                return GetPlaceholderIcon();
+            }
+
+            try
+            {
+                Texture texture = SpriteManager.TextureFromSprite(icons[variant]);
+                return texture != null ? texture : GetPlaceholderIcon();
+            }
+            catch
+            {
+                return GetPlaceholderIcon();
+            }
+        }
+
+        private static Texture2D GetPlaceholderIcon()
+        {
+            if (s_placeholderIcon == null)
+            {
+                s_placeholderIcon = new Texture2D(32, 32, TextureFormat.RGBA32, false);
+                Color[] pixels = new Color[32 * 32];
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    pixels[i] = new Color(0.25f, 0.25f, 0.25f, 1f);
+                }
+                s_placeholderIcon.SetPixels(pixels);
+                s_placeholderIcon.Apply();
+            }
+
+            return s_placeholderIcon;
         }
 
         public static void Update()

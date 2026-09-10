@@ -1,14 +1,25 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using HarmonyLib;
 using ValheimTooler.Core;
 using ValheimTooler.Models.Mono;
 
 namespace ValheimTooler.Patches
 {
-    [HarmonyPatch(typeof(Destructible), "Start")]
+    [HarmonyPatch]
     class AutoPinResources
     {
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(typeof(Destructible), "Start");
+        }
+
+        private static bool Prepare()
+        {
+            return TargetMethod() != null;
+        }
+
         private static Random s_random = new Random();
         private const string Chars = "0123456789";
         private static void Postfix(ref Destructible __instance)

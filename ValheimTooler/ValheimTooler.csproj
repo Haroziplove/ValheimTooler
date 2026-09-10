@@ -66,6 +66,10 @@
       <HintPath>F:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\assembly_valheim.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Splatform">
+      <HintPath>F:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\Splatform.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Mono.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
       <HintPath>..\packages\Mono.Cecil.0.11.4\lib\net40\Mono.Cecil.dll</HintPath>
     </Reference>
@@ -166,6 +170,7 @@
     <Compile Include="Patches\InventoryNoWeightLimit.cs" />
     <Compile Include="Patches\NoPlacementCostRepair.cs" />
     <Compile Include="Patches\DisableInputWhenInterfaceIsShowed.cs" />
+    <Compile Include="Patches\PatchHelpers.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

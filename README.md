@@ -4,42 +4,31 @@
 </h1>
 
 <p align="center">
-  <a href="https://github.com/Astropilot/ValheimTooler/releases">
-    <img src="https://img.shields.io/github/downloads/Astropilot/ValheimTooler/total"
-         alt="Download counter">
+  <img src="https://img.shields.io/badge/version-1.12.0-blue" alt="Version 1.12.0">
+  <img src="https://img.shields.io/badge/Valheim-1.0.7-green" alt="Valheim 1.0.7">
+  <a href="https://github.com/Astropilot/ValheimTooler/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/Astropilot/ValheimTooler" alt="MIT License">
   </a>
-  <a href="https://valheim.thunderstore.io/package/Astropilot/ValheimTooler/">
-    <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fthunderstore.io%2Fapi%2Fv1%2Fpackage-metrics%2FAstropilot%2FValheimTooler%2F&query=%24.downloads&label=Thunderstore%20downloads&color=%234c1" alt="Thunderstore download count">
-  </a>
-  <img src="https://img.shields.io/github/v/tag/Astropilot/ValheimTooler">
-  <a href="https://github.com/Astropilot/ValheimTooler/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/Astropilot/ValheimTooler"
-         alt="MIT License">
-  </a>
-  <img src="https://img.shields.io/badge/Made%20with-%E2%9D%A4%EF%B8%8F-red.svg">
-</p>
-<p align="center">
-  <a href="https://discord.gg/y2wbG5uQ7y">
-    <img src="https://discord.com/assets/f8389ca1a741a115313bede9ac02e2c0.svg" height="60">
-  </a>
-</p>
-
-<p align="center">
-    <a href="./README-FR.md">French Version <img src="https://cdn.countryflags.com/thumbs/france/flag-800.png" height="16"></a>
 </p>
 
 <p align="center">
   <a href="#about">About</a> •
+  <a href="#this-fork">This fork</a> •
+  <a href="#install">Install</a> •
   <a href="#usage">Usage</a> •
   <a href="#contributing">Contributing</a> •
-  <a href="#special-mentions-and-credits">Special mentions and credits</a>
+  <a href="#credits">Credits</a>
 </p>
 
 ## About
 
-ValheimTooler is a free software that allows you to cheat on the Valheim game via a multitude of options offered. This project is purely for educational purposes, I am not responsible for the use you make of it. Be reasonable some features are particularly game breaker.
+ValheimTooler is a free tool with a large set of cheats and admin helpers for Valheim. It is for educational and private use. Some features will wreck a normal playthrough, especially on multiplayer servers. Use them with care.
 
-Here is the list of features offered by this tool:
+This repository is a **community fork** of [Astropilot/ValheimTooler](https://github.com/Astropilot/ValheimTooler) by Yohann MARTIN (Astropilot). The original project last targeted Valheim 0.219.x and is not maintained for Valheim 1.0.
+
+**This fork is 1.12.0** and is updated for **Valheim 1.0.7** (Deep North).
+
+Features:
 
 * **Player**
   * God Mode, you don't lose any more life
@@ -55,14 +44,13 @@ Here is the list of features offered by this tool:
   * Allow teleporting with restricted items
   * Instantly heals a player
   * Instantly heals all players
-  * Activate a Guardian Power for you
+  * Activate a Guardian Power for you (including Kall and any extra `GP_*` powers)
   * Activate a Guardian Power for all players
   * Raise/Decrease a skill to any level
   * Tame all nearby creatures
   * Unlimited weight for inventory
   * Fast crafting
   * Remove your tombstones
-  * Change the interaction distance
 * **Entities & Items**
   * Spawn any entity
   * Delete all drops on the ground
@@ -82,57 +70,69 @@ Here is the list of features offered by this tool:
   * Send a chat message as any username
   * A ESP for players, monsters, pickables, deposits and drops with radius setting
 
-**⚠️ Warning ⚠️**: On each feature that allows you to choose a player, the list will only include players who are at a certain distance from you (quite large but not the whole map for all that). This is not a personal choice but a technical limitation of the game. Until I find a way to get around it (if possible) this behavior will remain.
+**Warning**: On each feature that allows you to choose a player, the list will only include players who are at a certain distance from you. That is a game limitation, not a fork choice.
+
+## This fork
+
+| | Original | This fork |
+| --- | --- | --- |
+| Author | [Astropilot](https://github.com/Astropilot) (Yohann MARTIN) | [Haroziplove](https://github.com/Haroziplove) |
+| Last official release | 1.11.x for Valheim 0.219.14 | **1.12.0 for Valheim 1.0.7** |
+| Source | [Astropilot/ValheimTooler](https://github.com/Astropilot/ValheimTooler) | [Haroziplove/ValheimTooler](https://github.com/Haroziplove/ValheimTooler) |
+
+1.12.0 changes for Valheim 1.0:
+
+* Harmony no longer crashes when `InventoryGrid.OnRightClick` is missing (1.0 uses `OnLeftDown` / `OnRightDown`)
+* Inventory, chat, pins, stamina, and terrain APIs updated for 1.0
+* Item Giver keeps items whose preview icons fail (gray placeholder)
+* Kall and other `GP_*` guardian powers are picked up from the game data
+
+## Install
+
+**Prerequisite:** [BepInEx for Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/) must already be installed. This plugin will not load without it. Thunderstore / r2modman is the easiest way.
+
+Prebuilt 1.12.0 files are in [`Built DLLs`](./Built%20DLLs):
+
+* `ValheimTooler.dll`
+* `ValheimToolerMod.dll`
+* `SharpConfig.dll`
+
+1. Install BepInEx for Valheim first.
+2. Copy all three files from [`Built DLLs`](./Built%20DLLs) into `BepInEx/plugins/ValheimTooler/`.
+   * Steam install: `Valheim/BepInEx/plugins/ValheimTooler/`
+   * Thunderstore / r2modman: your profile's `BepInEx/plugins/ValheimTooler/`
+3. Start Valheim **modded**.
+4. Wait until the **main menu**, then press **Del** to show or hide the window.
+
+To build from source instead, compile `ValheimTooler` and `ValheimToolerMod` as **Release | x64** against your local Valheim install, then copy the same three DLLs into that plugin folder. Point the Valheim assembly references in the `.csproj` files at your own game install before building.
+
+Astropilot's installer/launcher still lives in this repo. For an old pre-1.0 build you can use [the original releases](https://github.com/Astropilot/ValheimTooler/releases). Those builds do **not** work on Valheim 1.0.
+
+If an install breaks the game, use Steam's "Verify integrity of game files".
 
 ## Usage
 
-I made sure that you can install and run this tool easily. Just [go here](https://github.com/Astropilot/ValheimTooler/releases) to download the latest version. Take the .zip and extract it to any folder. Then run the `ValheimToolerLauncher.exe` and click on `Install`.
+A config file is created on first launch:
 
-If the button is not available it is likely that the program has not found the path to the game, specify it just below and the button should become clickable.
+* Launcher: next to `ValheimToolerLauncher.exe`
+* BepInEx: `BepInEx/config/valheimtooler_settings.cfg`
 
-Once the installation is complete, run the game with the launcher open. Once you get to the main menu (AND NOT BEFORE) of the game you can click on `Launch` and the cheat should appear in game. To show/hide the cheat window you can press `Del` on your keyboard.
-
-When a cheat update is available, the launcher allows you to update the cheat directly. A button will appear and you just have to click on it to automatically install the latest version!
-
-If you want to uninstall the cheat you just have to press the `Uninstall` button.
-
-**Note**: If the installation or uninstallation ever prevents the game from launching, you can always ask Steam to check the integrity of the game files and it will repair the corrupted files.
-
-Here is also a video tutorial explaining its installation and a demonstration of its features:
-
-<p align="center">
-<a href="https://www.youtube.com/watch?feature=player_embedded&v=Xbt0V_1Xt4U" target="_blank">
-  <img src="https://img.youtube.com/vi/Xbt0V_1Xt4U/maxresdefault.jpg" width="640" height="360" border="10" alt="Tutorial/Demonstration video">
-</a>
-</p>
-
-### Configuration
-
-A configuration file is available to modify some of the tool's parameters, this file is created when the tool is first launched.
-The file is available:
-- If you use the launcher the file should appear in the same place as the `ValheimToolerLauncher.exe`
-- If you use the BepInEx version, it should be available in the `BepInEx/config` folder
-
-The name of the configuration file is `valheimtooler_settings.cfg`
-
-This file allows you to modify the following parameters:
-- Change the key that displays/hides the tool, defaulting to the Delete key
-- Choose to show the tool when it starts, default is active
-- Choose the display language of the program, auto by default (depending on the game language)
-- Set up keyboard shortcuts for some features
+You can change the toggle key (default Delete), whether the window starts visible, language, and feature shortcuts.
 
 ## Contributing
 
-The project is open for contributions! Open an Issue to propose new features or directly make a merge request if you want to implement it yourself. Please respect the conventions defined by editorconfig! It should be automatically taken into account by Visual Studio.
+This fork is open for issues and pull requests on [Haroziplove/ValheimTooler](https://github.com/Haroziplove/ValheimTooler). Please follow the editorconfig rules.
 
-A more complete contributing file will arrive soon...
+## Credits
 
-## Special mentions and credits
+**Original project:** [ValheimTooler](https://github.com/Astropilot/ValheimTooler) by **Yohann MARTIN ([Astropilot](https://github.com/Astropilot))**, released under the MIT License. This fork keeps that license and exists only to keep the tool working on current Valheim.
 
-* Thanks to the [Guided Hacking](https://guidedhacking.com/threads/how-to-hack-unity-games-using-mono-injection-tutorial.11674/) and [Unknown Cheats](https://www.unknowncheats.me/forum/unity/285864-beginners-guide-hacking-unity-games.html) forums for their tutorials that gave me the basics to design an injectable cheat
-* Many thanks to [wh0am15533](https://github.com/wh0am15533) for its [Unity Runtime DevTools](https://www.unknowncheats.me/forum/unity/388951-unity-runtime-devtools-v1-01-a.html) utility from which I got some parts related to resource loading in the assembly and its [SharpMonoInjector](https://github.com/wh0am15533/SharpMonoInjector) update
-* Thanks to [KillerGoldFisch](https://github.com/KillerGoldFisch) for his proposal to put this tool as a mod for BepInEx as well as [his example code](https://github.com/KillerGoldFisch/ValheimToolerLoaderMod) for the implementation of this plugin
-* Thanks to [themaoci](https://github.com/themaoci) for his work allowing to redo a part of the functionalities via patching as well as the addition of new functionalities such as: auto-marking on the minimap of deposits, instant crafting and teleportation with forbidden items
-* Thanks to [the Gungnir mod](https://github.com/zambony/Gungnir) for the Terrain Shaper
-* Thanks to [BepInEx](https://github.com/BepInEx/BepInEx) for the configuration system reused in this code
-* Many thanks to [BastienMarais](https://github.com/BastienMarais) for his precious help during the development phase for his tests and feature ideas!
+Credits from the original README:
+
+* [Guided Hacking](https://guidedhacking.com/threads/how-to-hack-unity-games-using-mono-injection-tutorial.11674/) and [Unknown Cheats](https://www.unknowncheats.me/forum/unity/285864-beginners-guide-hacking-unity-games.html)
+* [wh0am15533](https://github.com/wh0am15533) — Unity Runtime DevTools and [SharpMonoInjector](https://github.com/wh0am15533/SharpMonoInjector)
+* [KillerGoldFisch](https://github.com/KillerGoldFisch) — BepInEx loader approach
+* [themaoci](https://github.com/themaoci) — Harmony patches, auto-pin, instant craft, restricted teleport
+* [Gungnir](https://github.com/zambony/Gungnir) — Terrain Shaper
+* [BepInEx](https://github.com/BepInEx/BepInEx) — configuration system
+* [BastienMarais](https://github.com/BastienMarais) — testing and feature ideas

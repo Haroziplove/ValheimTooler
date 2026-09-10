@@ -1,3 +1,4 @@
+using Splatform;
 using UnityEngine;
 using ValheimTooler.Core;
 using ValheimTooler.Utils;
@@ -10,7 +11,7 @@ namespace ValheimTooler.Models.Mono
 
         public void Init(string aName)
         {
-            pin = Minimap.instance.AddPin(base.transform.position, Minimap.PinType.Icon3, aName, ConfigManager.s_permanentPins.Value, false);
+            pin = Minimap.instance.AddPin(base.transform.position, Minimap.PinType.Icon3, aName, ConfigManager.s_permanentPins.Value, false, 0L, PlatformUserID.None);
             ZLog.Log(string.Format("Tracking: {0} at {1} {2} {3}", new object[]
             {
                 aName,

@@ -16,6 +16,11 @@ namespace ValheimTooler.UI
 
         public static Texture2D TextureFromSprite(Sprite sprite, bool resize = true)
         {
+            if (sprite == null || sprite.texture == null)
+            {
+                return null;
+            }
+
             if (sprite.rect.width == sprite.texture.width)
             {
                 return sprite.texture;

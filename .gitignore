@@ -547,3 +547,7 @@ $RECYCLE.BIN/
 
 ValheimToolerMod/Libs/**
 !ValheimToolerMod/Libs/.gitkeep
+
+# Keep the published plugin binaries
+!/Built DLLs/
+!/Built DLLs/*.dll

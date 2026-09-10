@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
@@ -31,14 +32,26 @@ namespace ValheimTooler
             _valheimToolerRect = new Rect(ConfigManager.s_mainWindowPosition.Value.x, ConfigManager.s_mainWindowPosition.Value.y, 800, 300);
             s_showMainWindow = ConfigManager.s_showAtStartup.Value;
 
-            PlayerHacks.Start();
-            EntitiesItemsHacks.Start();
-            ItemGiver.Start();
-            MiscHacks.Start();
-            ESP.Start();
-            TerrainShaper.Start();
+            StartFeature(PlayerHacks.Start, "PlayerHacks");
+            StartFeature(EntitiesItemsHacks.Start, "EntitiesItemsHacks");
+            StartFeature(ItemGiver.Start, "ItemGiver");
+            StartFeature(MiscHacks.Start, "MiscHacks");
+            StartFeature(ESP.Start, "ESP");
+            StartFeature(TerrainShaper.Start, "TerrainShaper");
 
             _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        }
+
+        private static void StartFeature(Action start, string name)
+        {
+            try
+            {
+                start();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ValheimTooler] Failed to start " + name + ": " + ex.Message);
+            }
         }
         public void Update()
         {

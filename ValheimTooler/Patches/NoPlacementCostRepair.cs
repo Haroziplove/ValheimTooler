@@ -1,4 +1,4 @@
-using System;
+using System.Reflection;
 using HarmonyLib;
 using ValheimTooler.Utils;
 
@@ -6,10 +6,20 @@ namespace ValheimTooler.Patches
 {
     class NoPlacementCostRepair
     {
-        [HarmonyPatch(typeof(InventoryGui), "CanRepair", new Type[] { typeof(ItemDrop.ItemData) })]
+        [HarmonyPatch]
         public class CanRepairPatch
         {
-            private static bool Prefix(ref InventoryGui __instance, ref bool __result, ItemDrop.ItemData item)
+            private static MethodBase TargetMethod()
+            {
+                return AccessTools.Method(typeof(InventoryGui), "CanRepair");
+            }
+
+            private static bool Prepare()
+            {
+                return TargetMethod() != null;
+            }
+
+            private static bool Prefix(ref bool __result)
             {
                 if (Player.m_localPlayer == null)
                 {
