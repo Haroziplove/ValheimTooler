@@ -166,6 +166,7 @@
     <Compile Include="Patches\InventoryNoWeightLimit.cs" />
     <Compile Include="Patches\NoPlacementCostRepair.cs" />
     <Compile Include="Patches\DisableInputWhenInterfaceIsShowed.cs" />
+    <Compile Include="Patches\PatchHelpers.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

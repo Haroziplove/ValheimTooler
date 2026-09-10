@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using HarmonyLib;
 using RapidGUI;
 using UnityEngine;
@@ -20,7 +22,17 @@ namespace ValheimTooler
 
         private static void RunPatches()
         {
-            s_harmony.PatchAll();
+            foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
+            {
+                try
+                {
+                    s_harmony.CreateClassProcessor(type).Patch();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning("[ValheimTooler] Skipped Harmony patch " + type.FullName + ": " + ex.Message);
+                }
+            }
         }
 
         public static void Unload()
@@ -37,5 +49,4 @@ namespace ValheimTooler
         private static GameObject s_entryPoint = null;
         private static readonly Harmony s_harmony = new Harmony("ValheimTooler");
     }
-
 }

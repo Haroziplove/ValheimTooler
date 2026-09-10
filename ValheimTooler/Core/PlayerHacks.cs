@@ -59,19 +59,68 @@ namespace ValheimTooler.Core
                 s_levels.Add(i.ToString());
             }
 
-            s_guardianPowers = new Dictionary<string, string>() {
-                { Localization.instance.Localize("$se_eikthyr_name"), "GP_Eikthyr" },
-                { Localization.instance.Localize("$se_theelder_name"), "GP_TheElder" },
-                { Localization.instance.Localize("$se_bonemass_name"), "GP_Bonemass" },
-                { Localization.instance.Localize("$se_moder_name"), "GP_Moder" },
-                { Localization.instance.Localize("$se_yagluth_name"), "GP_Yagluth" },
-                { Localization.instance.Localize("$se_queen_name"), "GP_Queen" },
-                { Localization.instance.Localize("$se_fader_name"), "GP_Fader" },
-            };
+            s_guardianPowers = BuildGuardianPowers();
+        }
+
+        private static bool s_guardianPowersRefreshedFromDb = false;
+
+        private static IDictionary<string, string> BuildGuardianPowers()
+        {
+            var powers = new Dictionary<string, string>();
+            AddGuardianPower(powers, "$se_eikthyr_name", "GP_Eikthyr");
+            AddGuardianPower(powers, "$se_theelder_name", "GP_TheElder");
+            AddGuardianPower(powers, "$se_bonemass_name", "GP_Bonemass");
+            AddGuardianPower(powers, "$se_moder_name", "GP_Moder");
+            AddGuardianPower(powers, "$se_yagluth_name", "GP_Yagluth");
+            AddGuardianPower(powers, "$se_queen_name", "GP_Queen");
+            AddGuardianPower(powers, "$se_fader_name", "GP_Fader");
+            AddGuardianPower(powers, "$se_kall_name", "GP_Kall");
+
+            if (ObjectDB.instance != null && ObjectDB.instance.m_StatusEffects != null)
+            {
+                foreach (StatusEffect statusEffect in ObjectDB.instance.m_StatusEffects)
+                {
+                    if (statusEffect == null || string.IsNullOrEmpty(statusEffect.name) || !statusEffect.name.StartsWith("GP_"))
+                    {
+                        continue;
+                    }
+                    if (powers.Values.Contains(statusEffect.name))
+                    {
+                        continue;
+                    }
+
+                    string displayName = string.IsNullOrEmpty(statusEffect.m_name)
+                        ? statusEffect.name
+                        : Localization.instance.Localize(statusEffect.m_name);
+                    if (!powers.ContainsKey(displayName))
+                    {
+                        powers.Add(displayName, statusEffect.name);
+                    }
+                }
+            }
+
+            return powers;
+        }
+
+        private static void AddGuardianPower(IDictionary<string, string> powers, string localizationToken, string prefabName)
+        {
+            string displayName = Localization.instance != null
+                ? Localization.instance.Localize(localizationToken)
+                : localizationToken;
+            if (!powers.ContainsKey(displayName))
+            {
+                powers.Add(displayName, prefabName);
+            }
         }
 
         public static void Update()
         {
+            if (!s_guardianPowersRefreshedFromDb && ObjectDB.instance != null && ObjectDB.instance.m_StatusEffects != null && ObjectDB.instance.m_StatusEffects.Count > 0)
+            {
+                s_guardianPowers = BuildGuardianPowers();
+                s_guardianPowersRefreshedFromDb = true;
+            }
+
             if (Time.time >= s_actionTimer)
             {
                 if (s_isInfiniteStaminaOthers)
