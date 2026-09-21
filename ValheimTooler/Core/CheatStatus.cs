@@ -233,14 +233,33 @@ namespace ValheimTooler.Core
             return s_groundCount > 0;
         }
 
-        public static void DrawMinimapIndicators()
+        public static void DrawHudIndicators()
         {
             if (ConfigManager.s_cheatMinimapIndicators == null || !ConfigManager.s_cheatMinimapIndicators.Value)
             {
                 return;
             }
 
-            if (Player.m_localPlayer == null || Minimap.instance == null || Hud.IsUserHidden() || Minimap.IsOpen())
+            if (Player.m_localPlayer == null)
+            {
+                return;
+            }
+
+            bool inventoryOpen = InventoryGui.IsVisible();
+            bool inventoryCheated = HasInventoryCheated();
+            bool containerCheated = inventoryOpen && HasContainerCheated();
+            bool drops = HasNearbyCheatedDrops();
+
+            if (inventoryOpen && (inventoryCheated || containerCheated))
+            {
+                RectTransform panel = InventoryPanel();
+                if (panel != null)
+                {
+                    DrawIndicatorRow(ScreenRect(panel), inventoryCheated ? GetRedCircle() : null, containerCheated ? GetYellowCircle() : null);
+                }
+            }
+
+            if (Hud.IsUserHidden() || Minimap.IsOpen() || Minimap.instance == null)
             {
                 return;
             }
@@ -257,30 +276,58 @@ namespace ValheimTooler.Core
                 return;
             }
 
-            bool inventory = HasInventoryCheated();
-            bool drops = HasNearbyCheatedDrops();
-            if (!inventory && !drops)
+            bool minimapRed = inventoryCheated && !inventoryOpen;
+            if (!minimapRed && !drops)
             {
                 return;
             }
 
-            Rect map = ScreenRect(transform);
+            DrawIndicatorRow(ScreenRect(transform), minimapRed ? GetRedCircle() : null, drops ? GetOrangeCircle() : null);
+        }
+
+        public static bool HasContainerCheated()
+        {
+            return CountCheated(GetOpenContainerInventory()) > 0;
+        }
+
+        private static RectTransform InventoryPanel()
+        {
+            if (InventoryGui.instance == null)
+            {
+                return null;
+            }
+
+            RectTransform player = InventoryGui.instance.m_player;
+            if (player != null && player.gameObject.activeInHierarchy)
+            {
+                return player;
+            }
+
+            return InventoryGui.instance.m_inventoryRoot as RectTransform;
+        }
+
+        private static void DrawIndicatorRow(Rect anchor, Texture2D first, Texture2D second)
+        {
             const float size = 14f;
             const float gap = 6f;
             const float lift = 10f;
-            int shown = (inventory ? 1 : 0) + (drops ? 1 : 0);
-            float total = shown * size + (shown - 1) * gap;
-            float x = map.x + (map.width - total) * 0.5f;
-            float y = map.y - size - lift;
-
-            if (inventory)
+            int shown = (first != null ? 1 : 0) + (second != null ? 1 : 0);
+            if (shown == 0)
             {
-                DrawCircle(new Rect(x, y, size, size), GetRedCircle());
+                return;
+            }
+
+            float total = shown * size + (shown - 1) * gap;
+            float x = anchor.x + (anchor.width - total) * 0.5f;
+            float y = anchor.y - size - lift;
+            if (first != null)
+            {
+                DrawCircle(new Rect(x, y, size, size), first);
                 x += size + gap;
             }
-            if (drops)
+            if (second != null)
             {
-                DrawCircle(new Rect(x, y, size, size), GetOrangeCircle());
+                DrawCircle(new Rect(x, y, size, size), second);
             }
         }
 
@@ -323,6 +370,16 @@ namespace ValheimTooler.Core
             }
 
             return s_orangeCircle;
+        }
+
+        private static Texture2D GetYellowCircle()
+        {
+            if (s_yellowCircle == null)
+            {
+                s_yellowCircle = MakeCircle(new Color(0.95f, 0.82f, 0.12f, 1f));
+            }
+
+            return s_yellowCircle;
         }
 
         private static Texture2D MakeCircle(Color color)
@@ -454,6 +511,7 @@ namespace ValheimTooler.Core
         private static string s_groundNames = "";
         private static Texture2D s_redCircle;
         private static Texture2D s_orangeCircle;
+        private static Texture2D s_yellowCircle;
 
         public static void DrawCleanPreviewCount()
         {

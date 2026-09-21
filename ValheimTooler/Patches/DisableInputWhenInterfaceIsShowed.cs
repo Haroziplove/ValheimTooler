@@ -20,7 +20,7 @@ namespace ValheimTooler.Patches
 
             private static bool Prefix(ref bool __result)
             {
-                if (EntryPoint.s_showMainWindow && EntryPoint.IsPointerOverTool())
+                if (EntryPoint.IsToolInteractive() && EntryPoint.IsPointerOverTool())
                 {
                     __result = true;
                     return false;

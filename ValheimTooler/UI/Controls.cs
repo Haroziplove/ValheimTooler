@@ -329,7 +329,7 @@ namespace ValheimTooler.UI
 
         public static void SetHoverTooltip(string tip)
         {
-            if (Event.current == null || Event.current.type != EventType.Repaint || string.IsNullOrEmpty(tip))
+            if (EntryPoint.s_passThroughInput || Event.current == null || Event.current.type != EventType.Repaint || string.IsNullOrEmpty(tip))
             {
                 return;
             }
@@ -357,7 +357,7 @@ namespace ValheimTooler.UI
 
         public static void NoteHoverAction(string labelCode)
         {
-            if (Event.current == null || string.IsNullOrEmpty(labelCode))
+            if (EntryPoint.s_passThroughInput || Event.current == null || string.IsNullOrEmpty(labelCode))
             {
                 return;
             }

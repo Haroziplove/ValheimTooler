@@ -12,7 +12,7 @@ namespace ValheimTooler.Core
 
         public static void UpdateFromUi()
         {
-            if (!EntryPoint.s_showMainWindow || Player.m_localPlayer == null)
+            if (!EntryPoint.IsToolInteractive() || Player.m_localPlayer == null)
             {
                 Hide();
                 return;

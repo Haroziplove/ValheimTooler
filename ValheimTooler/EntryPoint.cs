@@ -16,11 +16,14 @@ namespace ValheimTooler
         public static Rect s_mainWindowRect;
 
         public static bool s_showMainWindow = true;
+        public static bool s_passThroughInput = false;
         private bool _wasMainWindowShowed = false;
         public static bool s_showItemGiver = false;
         public static bool s_showRecipeManager = false;
         private static int s_toggleFrame = -1;
         private static bool s_toggleKeyHeld = false;
+        private static int s_passThroughFrame = -1;
+        private static bool s_passThroughKeyHeld = false;
 
         private WindowToolbar _windowToolbar = WindowToolbar.PLAYER;
         private readonly string[] _toolbarChoices = {
@@ -78,11 +81,16 @@ namespace ValheimTooler
                 }
             }
 
-            if (s_showMainWindow && GameCamera.instance != null)
+            if (Input.GetKeyUp(KeyCode.End))
             {
-                GameCamera.instance.SetFieldValue<bool>("m_mouseCapture", false);
-                GameCamera.instance.CallMethod("UpdateMouseCapture");
+                s_passThroughKeyHeld = false;
             }
+            if (s_showMainWindow && Input.GetKeyDown(KeyCode.End) && !s_passThroughKeyHeld)
+            {
+                TogglePassThrough();
+            }
+
+            ApplyMouseCapture();
 
             PlayerHacks.Update();
             EntitiesItemsHacks.Update();
@@ -97,24 +105,28 @@ namespace ValheimTooler
             GUI.skin = InterfaceMaker.CustomSkin;
 
             HandleToggleHotkey();
+            HandlePassThroughHotkey();
             Controls.PrepareTooltipPass();
 
             if (s_showMainWindow)
             {
-                _valheimToolerRect = GUILayout.Window(1001, _valheimToolerRect, ValheimToolerWindow, VTLocalization.instance.Localize($"$vt_main_title (v{_version})"), GUILayout.Height(10), GUILayout.MinWidth(860));
-                s_mainWindowRect = _valheimToolerRect;
+                if (ShouldProcessToolGui())
+                {
+                    _valheimToolerRect = GUILayout.Window(1001, _valheimToolerRect, ValheimToolerWindow, VTLocalization.instance.Localize($"$vt_main_title (v{_version})"), GUILayout.Height(10), GUILayout.MinWidth(860));
+                    s_mainWindowRect = _valheimToolerRect;
 
-                if (s_showItemGiver)
-                {
-                    ItemGiver.DisplayGUI();
-                }
-                if (s_showRecipeManager)
-                {
-                    RecipeManager.DisplayGUI();
+                    if (s_showItemGiver)
+                    {
+                        ItemGiver.DisplayGUI();
+                    }
+                    if (s_showRecipeManager)
+                    {
+                        RecipeManager.DisplayGUI();
+                    }
+
+                    ConfigManager.s_mainWindowPosition.Value = _valheimToolerRect.position;
                 }
                 _wasMainWindowShowed = true;
-
-                ConfigManager.s_mainWindowPosition.Value = _valheimToolerRect.position;
             }
             else
             {
@@ -131,19 +143,49 @@ namespace ValheimTooler
 
             ESP.DisplayGUI();
             EspRadiusMap.Draw();
-            CheatStatus.DrawMinimapIndicators();
-            Controls.DrawOverlayTooltip();
-            Controls.DrawConfirmDialog();
+            CheatStatus.DrawHudIndicators();
+            if (!s_passThroughInput)
+            {
+                Controls.DrawOverlayTooltip();
+                Controls.DrawConfirmDialog();
+            }
+        }
+
+        public static bool IsToolInteractive()
+        {
+            return s_showMainWindow && !s_passThroughInput;
         }
 
         public static bool ShouldBlockCameraZoom()
         {
-            if (!s_showMainWindow)
+            if (!IsToolInteractive())
             {
                 return false;
             }
 
             return RGUI.IsPopupOpen() || IsPointerOverTool() || Controls.HasConfirmDialog;
+        }
+
+        private static bool ShouldProcessToolGui()
+        {
+            if (!s_passThroughInput)
+            {
+                return true;
+            }
+
+            EventType type = Event.current.type;
+            return type == EventType.Layout || type == EventType.Repaint;
+        }
+
+        private static void ApplyMouseCapture()
+        {
+            if (GameCamera.instance == null)
+            {
+                return;
+            }
+
+            GameCamera.instance.SetFieldValue<bool>("m_mouseCapture", !IsToolInteractive());
+            GameCamera.instance.CallMethod("UpdateMouseCapture");
         }
 
         public static void HandleToggleHotkey()
@@ -202,17 +244,51 @@ namespace ValheimTooler
             s_showMainWindow = !s_showMainWindow;
             GUIUtility.keyboardControl = 0;
             GUI.FocusControl(null);
+            ApplyMouseCapture();
+        }
 
-            if (s_showMainWindow && GameCamera.instance != null)
+        public static void HandlePassThroughHotkey()
+        {
+            Event ev = Event.current;
+            if (ev == null)
             {
-                GameCamera.instance.SetFieldValue<bool>("m_mouseCapture", false);
-                GameCamera.instance.CallMethod("UpdateMouseCapture");
+                return;
             }
+
+            if (ev.type == EventType.KeyUp && ev.keyCode == KeyCode.End)
+            {
+                s_passThroughKeyHeld = false;
+                return;
+            }
+
+            if (!s_showMainWindow || ev.type != EventType.KeyDown || ev.keyCode != KeyCode.End || s_passThroughKeyHeld)
+            {
+                return;
+            }
+
+            TogglePassThrough();
+            ev.Use();
+        }
+
+        private static void TogglePassThrough()
+        {
+            if (s_passThroughFrame == Time.frameCount || !s_showMainWindow)
+            {
+                return;
+            }
+
+            s_passThroughFrame = Time.frameCount;
+            s_passThroughKeyHeld = true;
+            s_passThroughInput = !s_passThroughInput;
+            GUIUtility.keyboardControl = 0;
+            GUI.FocusControl(null);
+            ApplyMouseCapture();
         }
 
         void ValheimToolerWindow(int windowID)
         {
             HandleToggleHotkey();
+            HandlePassThroughHotkey();
 
             GUILayout.Space(4);
 
@@ -245,7 +321,7 @@ namespace ValheimTooler
 
         public static bool IsPointerOverTool()
         {
-            if (!s_showMainWindow)
+            if (!IsToolInteractive())
             {
                 return false;
             }
