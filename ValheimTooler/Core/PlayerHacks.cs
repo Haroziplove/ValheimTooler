@@ -5,6 +5,7 @@ using RapidGUI;
 using UnityEngine;
 using ValheimTooler.Core.Extensions;
 using ValheimTooler.Models;
+using ValheimTooler.Patches;
 using ValheimTooler.Utils;
 
 namespace ValheimTooler.Core
@@ -15,6 +16,7 @@ namespace ValheimTooler.Core
         public static bool s_inventoryNoWeightLimit = false;
         public static bool s_instantCraft = false;
         public static bool s_bypassRestrictedTeleportable = false;
+        public static FeatureMethod s_noPlacementMethod = FeatureMethod.Direct;
         private static bool s_isInfiniteStaminaOthers = false;
         private static bool s_isNoStaminaOthers = false;
         private static int s_teleportSourceIdx = -1;
@@ -93,7 +95,7 @@ namespace ValheimTooler.Core
 
                         string displayName = string.IsNullOrEmpty(statusEffect.m_name)
                             ? statusEffect.name
-                            : Localization.instance.Localize(statusEffect.m_name);
+                            : ResolveGuardianPowerName(statusEffect.m_name, statusEffect.name);
                         if (!powers.ContainsKey(displayName))
                         {
                             powers.Add(displayName, statusEffect.name);
@@ -108,15 +110,54 @@ namespace ValheimTooler.Core
             return powers;
         }
 
+        private static readonly Dictionary<string, string> s_guardianPowerFallbacks = new Dictionary<string, string>
+        {
+            { "GP_Kall", "Kall Fimbulbringer" },
+            { "$se_kall_name", "Kall Fimbulbringer" }
+        };
+
         private static void AddGuardianPower(IDictionary<string, string> powers, string localizationToken, string prefabName)
         {
-            string displayName = Localization.instance != null
-                ? Localization.instance.Localize(localizationToken)
-                : localizationToken;
+            string displayName = ResolveGuardianPowerName(localizationToken, prefabName);
             if (!powers.ContainsKey(displayName))
             {
                 powers.Add(displayName, prefabName);
             }
+        }
+
+        private static string ResolveGuardianPowerName(string localizationToken, string prefabName)
+        {
+            string displayName = Localization.instance != null
+                ? Localization.instance.Localize(localizationToken)
+                : localizationToken;
+
+            if (IsMissingLocalization(displayName, localizationToken))
+            {
+                if (s_guardianPowerFallbacks.TryGetValue(prefabName, out string fallback)
+                    || s_guardianPowerFallbacks.TryGetValue(localizationToken, out fallback))
+                {
+                    return fallback;
+                }
+
+                return prefabName.StartsWith("GP_") ? prefabName.Substring(3) : prefabName;
+            }
+
+            return displayName;
+        }
+
+        private static bool IsMissingLocalization(string localized, string token)
+        {
+            if (string.IsNullOrEmpty(localized))
+            {
+                return true;
+            }
+
+            if (localized == token || localized == token.TrimStart('$'))
+            {
+                return true;
+            }
+
+            return localized.Length >= 2 && localized[0] == '[' && localized[localized.Length - 1] == ']';
         }
 
         public static void Update()
@@ -247,59 +288,75 @@ namespace ValheimTooler.Core
             {
                 GUILayout.BeginVertical();
                 {
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_player_general_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                    UI.Controls.BeginSection("$vt_player_general_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
 
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_god_mode", Player.m_localPlayer.VTInGodMode(), ConfigManager.s_godModeShortCut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_player_god_mode", Player.m_localPlayer.VTInGodMode(), FeatureMethod.Direct, ConfigManager.s_godModeShortCut.Value))
                         {
                             ActionCurrentPlayerToggleGodMode();
                         }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_inf_stamina_me", s_isInfiniteStaminaMe, ConfigManager.s_unlimitedStaminaShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_player_inf_stamina_me", s_isInfiniteStaminaMe, FeatureMethod.Direct, ConfigManager.s_unlimitedStaminaShortcut.Value))
                         {
                             ActionCurrentPlayerToggleUnlimitedStamina();
                         }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_inf_stamina_others", s_isInfiniteStaminaOthers)))
+                        if (UI.Controls.FeatureButton("$vt_player_inf_stamina_others", s_isInfiniteStaminaOthers, FeatureMethod.Direct))
                         {
                             s_isInfiniteStaminaOthers = !s_isInfiniteStaminaOthers;
                         }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_no_stamina", s_isNoStaminaOthers)))
+                        if (UI.Controls.FeatureButton("$vt_player_no_stamina", s_isNoStaminaOthers, FeatureMethod.Direct))
                         {
                             s_isNoStaminaOthers = !s_isNoStaminaOthers;
                         }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_fly_mode", Player.m_localPlayer.VTInFlyMode(), ConfigManager.s_flyModeShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_player_fly_mode", Player.m_localPlayer.VTInFlyMode(), FeatureMethod.Direct, ConfigManager.s_flyModeShortcut.Value))
                         {
                             ActionCurrentPlayerToggleFlyMode();
                         }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_ghost_mode", Player.m_localPlayer.VTInGhostMode(), ConfigManager.s_ghostModeShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_player_ghost_mode", Player.m_localPlayer.VTInGhostMode(), FeatureMethod.Direct, ConfigManager.s_ghostModeShortcut.Value))
                         {
                             ActionCurrentPlayerToggleGhostMode();
                         }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_no_placement_cost", Player.m_localPlayer.VTIsNoPlacementCost(), ConfigManager.s_noPlacementCostShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_player_no_placement_cost", IsNoPlacementCostActive(), s_noPlacementMethod, ConfigManager.s_noPlacementCostShortcut.Value))
                         {
                             ActionCurrentPlayerToggleNoPlacementCost();
                         }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_explore_minimap")))
+                        FeatureMethod selectedPlacementMethod = UI.Controls.MethodPicker(s_noPlacementMethod);
+                        if (selectedPlacementMethod != s_noPlacementMethod)
                         {
-                            Minimap.instance.VTExploreAll();
+                            bool wasActive = IsNoPlacementCostActive();
+                            if (wasActive)
+                            {
+                                SetNoPlacementCost(false, s_noPlacementMethod);
+                            }
+                            s_noPlacementMethod = selectedPlacementMethod;
+                            if (wasActive)
+                            {
+                                SetNoPlacementCost(true, s_noPlacementMethod);
+                            }
                         }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_reset_minimap")))
+                        if (UI.Controls.ActionButton("$vt_player_tame_creatures", FeatureMethod.Direct))
                         {
-                            Minimap.instance.VTReset();
+                            Player.m_localPlayer.VTTameNearbyCreatures(ConfigManager.s_tameRadius.Value);
                         }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_tame_creatures")))
-                        {
-                            Player.m_localPlayer.VTTameNearbyCreatures();
-                        }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_infinite_weight", s_inventoryNoWeightLimit, ConfigManager.s_inventoryInfiniteWeightShortcut.Value)))
+                        ConfigManager.s_tameRadius.Value = UI.Controls.LabeledSlider(
+                            "$vt_player_tame_radius",
+                            ConfigManager.s_tameRadius.Value,
+                            1f,
+                            80f,
+                            ConfigManager.s_tameRadius.Value.ToString("0.0") + "m",
+                            "$vt_player_tame_radius");
+                        if (UI.Controls.FeatureButton("$vt_player_infinite_weight", s_inventoryNoWeightLimit, FeatureMethod.Direct, ConfigManager.s_inventoryInfiniteWeightShortcut.Value))
                         {
                             ActionCurrentPlayerToggleInventoryInfiniteWeight();
                         }
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_instant_craft", s_instantCraft, ConfigManager.s_instantCraftShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_player_instant_craft", s_instantCraft, FeatureMethod.Direct, ConfigManager.s_instantCraftShortcut.Value))
                         {
                             ActionCurrentPlayerToggleInstantCraft();
                         }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_remove_tombstone")))
+                        if (UI.Controls.FeatureButton("$vt_player_teleport_restricted", s_bypassRestrictedTeleportable, FeatureMethod.Direct))
+                        {
+                            s_bypassRestrictedTeleportable = !s_bypassRestrictedTeleportable;
+                        }
+                        if (UI.Controls.ActionButton("$vt_player_remove_tombstone", FeatureMethod.Direct))
                         {
                             if (Player.m_localPlayer != null)
                             {
@@ -338,33 +395,32 @@ namespace ValheimTooler.Core
                         //    }
                         //}
                     }
-                    GUILayout.EndVertical();
+                    UI.Controls.EndSection();
 
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_player_power_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                    UI.Controls.BeginSection("$vt_player_power_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_power_name :"), GUILayout.ExpandWidth(false));
-                            s_guardianPowerIdx = RGUI.SelectionPopup(s_guardianPowerIdx, s_guardianPowers.Keys.Select(p => VTLocalization.instance.Localize(p)).ToArray());
+                            UI.Controls.FieldLabel("$vt_player_power_name");
+                            s_guardianPowerIdx = RGUI.SelectionPopup(s_guardianPowerIdx, s_guardianPowers.Keys.ToArray());
                         }
                         GUILayout.EndHorizontal();
 
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_target :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_player_target");
                             s_guardianPowerTargetIdx = RGUI.SelectionPopup(s_guardianPowerTargetIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
                         }
                         GUILayout.EndHorizontal();
 
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_power_active_target")))
+                        if (UI.Controls.ActionButton("$vt_player_power_active_target", FeatureMethod.Direct))
                         {
                             if (s_guardianPowerTargetIdx < s_players.Count && s_guardianPowerTargetIdx >= 0)
                             {
                                 s_players[s_guardianPowerTargetIdx].VTActiveGuardianPower(s_guardianPowers[s_guardianPowerIdx]);
                             }
                         }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_power_active_all")))
+                        if (UI.Controls.ActionButton("$vt_player_power_active_all", FeatureMethod.Direct))
                         {
                             if (s_guardianPowers.ContainsKey(s_guardianPowerIdx))
                             {
@@ -372,128 +428,25 @@ namespace ValheimTooler.Core
                             }
                         }
                     }
-                    GUILayout.EndVertical();
-                }
-                GUILayout.EndVertical();
+                    UI.Controls.EndSection();
 
-                GUILayout.BeginVertical();
-                {
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_player_teleport_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                    UI.Controls.BeginSection("$vt_player_skill_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
-
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_player_teleport_restricted", s_bypassRestrictedTeleportable)))
-                        {
-                            s_bypassRestrictedTeleportable = !s_bypassRestrictedTeleportable;
-                        }
-
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_teleport_player_source :"), GUILayout.ExpandWidth(false));
-
-                            s_teleportSourceIdx = RGUI.SelectionPopup(s_teleportSourceIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
-                        }
-                        GUILayout.EndHorizontal();
-
-                        GUILayout.BeginHorizontal();
-                        {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_teleport_target :"), GUILayout.ExpandWidth(false));
-
-                            s_teleportTargetIdx = RGUI.SearchableSelectionPopup(s_teleportTargetIdx, s_tpTargetsFiltered?.Select(t => t.ToString()).ToArray(), ref s_teleportTargetSearchTerms);
-                            SearchTeleportTarget();
-                        }
-                        GUILayout.EndHorizontal();
-
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_teleport_button")))
-                        {
-                            if (s_players != null && s_teleportSourceIdx < s_players.Count && s_teleportSourceIdx >= 0)
-                            {
-                                if (s_tpTargetsFiltered != null && s_teleportTargetIdx < s_tpTargetsFiltered.Count && s_teleportTargetIdx >= 0)
-                                {
-                                    var source = s_players[s_teleportSourceIdx];
-                                    var targetPosition = s_tpTargetsFiltered[s_teleportTargetIdx].Position;
-
-                                    if (targetPosition != null && targetPosition is Vector3 targetPositionValue)
-                                    {
-                                        source.TeleportTo(targetPositionValue, source.transform.rotation, true);
-                                    }
-                                }
-                            }
-                        }
-
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
-                        GUILayout.BeginHorizontal();
-                        {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_coordinates (X,Y,Z):") + GetPlayerCoordinates(), GUILayout.ExpandWidth(false));
-                        }
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal();
-                        {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_teleport_coordinates :"), GUILayout.ExpandWidth(false));
-                            s_teleportCoordinates = GUILayout.TextField(s_teleportCoordinates);
-                        }
-                        GUILayout.EndHorizontal();
-
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_teleport_button")))
-                        {
-                            var coordinates = s_teleportCoordinates.Split(',');
-                            if (Player.m_localPlayer != null && coordinates.Length == 3)
-                            {
-                                if (int.TryParse(coordinates[0], out int coord_x) && int.TryParse(coordinates[1], out int coord_y) && int.TryParse(coordinates[2], out int coord_z))
-                                {
-                                    Player.m_localPlayer.TeleportTo(new Vector3(coord_x, coord_y, coord_z), Player.m_localPlayer.transform.rotation, true);
-                                }
-                            }
-                        }
-                    }
-                    GUILayout.EndVertical();
-
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_player_heal_manager_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
-                    {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
-                        GUILayout.BeginHorizontal();
-                        {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_heal_player :"), GUILayout.ExpandWidth(false));
-
-                            s_healTargetIdx = RGUI.SelectionPopup(s_healTargetIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
-                        }
-                        GUILayout.EndHorizontal();
-
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_heal_selected_player")))
-                        {
-                            if (s_healTargetIdx < s_players.Count && s_healTargetIdx >= 0)
-                            {
-                                s_players[s_healTargetIdx].VTHeal();
-                            }
-                        }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_heal_all_players")))
-                        {
-                            foreach (Player player in s_players)
-                            {
-                                player.VTHeal();
-                            }
-                        }
-                    }
-                    GUILayout.EndVertical();
-
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_player_skill_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
-                    {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
-                        GUILayout.BeginHorizontal();
-                        {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_skill_name :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_player_skill_name");
                             s_skillNameIdx = RGUI.SelectionPopup(s_skillNameIdx, s_skills.Select(skill => skill.ToString()).ToArray());
                         }
                         GUILayout.EndHorizontal();
 
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_skill_level :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_player_skill_level");
                             s_skillLevelIdx = RGUI.SelectionPopup(s_skillLevelIdx, s_levels.ToArray());
                         }
                         GUILayout.EndHorizontal();
 
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_player_skill_button")))
+                        if (UI.Controls.ActionButton("$vt_player_skill_button", FeatureMethod.Direct))
                         {
                             if (s_skillNameIdx < s_skills.Count && s_skillNameIdx >= 0)
                             {
@@ -519,7 +472,151 @@ namespace ValheimTooler.Core
                             }
                         }
                     }
-                    GUILayout.EndVertical();
+                    UI.Controls.EndSection();
+                }
+                GUILayout.EndVertical();
+
+                GUILayout.BeginVertical();
+                {
+                    UI.Controls.BeginSection("$vt_player_teleport_title");
+                    {
+                        GUILayout.BeginHorizontal();
+                        {
+                            UI.Controls.FieldLabel("$vt_player_teleport_player_source");
+
+                            s_teleportSourceIdx = RGUI.SelectionPopup(s_teleportSourceIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
+                        }
+                        GUILayout.EndHorizontal();
+
+                        GUILayout.BeginHorizontal();
+                        {
+                            UI.Controls.FieldLabel("$vt_player_teleport_target");
+
+                            s_teleportTargetIdx = RGUI.SearchableSelectionPopup(s_teleportTargetIdx, s_tpTargetsFiltered?.Select(t => t.ToString()).ToArray(), ref s_teleportTargetSearchTerms);
+                            SearchTeleportTarget();
+                        }
+                        GUILayout.EndHorizontal();
+
+                        if (UI.Controls.ActionButton("$vt_player_teleport_button", FeatureMethod.Direct))
+                        {
+                            if (s_players != null && s_teleportSourceIdx < s_players.Count && s_teleportSourceIdx >= 0)
+                            {
+                                if (s_tpTargetsFiltered != null && s_teleportTargetIdx < s_tpTargetsFiltered.Count && s_teleportTargetIdx >= 0)
+                                {
+                                    var source = s_players[s_teleportSourceIdx];
+                                    var targetPosition = s_tpTargetsFiltered[s_teleportTargetIdx].Position;
+
+                                    if (targetPosition != null && targetPosition is Vector3 targetPositionValue)
+                                    {
+                                        source.TeleportTo(targetPositionValue, source.transform.rotation, true);
+                                    }
+                                }
+                            }
+                        }
+
+                        GUILayout.Space(EntryPoint.s_boxSpacing);
+                        GUILayout.BeginHorizontal();
+                        {
+                            GUILayout.Label(VTLocalization.instance.Localize("$vt_player_coordinates (X,Y,Z):") + GetPlayerCoordinates(), GUILayout.ExpandWidth(false));
+                        }
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal();
+                        {
+                            UI.Controls.FieldLabel("$vt_player_teleport_coordinates");
+                            s_teleportCoordinates = GUILayout.TextField(s_teleportCoordinates);
+                        }
+                        GUILayout.EndHorizontal();
+
+                        if (UI.Controls.ActionButton("$vt_player_teleport_button", FeatureMethod.Direct))
+                        {
+                            var coordinates = s_teleportCoordinates.Split(',');
+                            if (Player.m_localPlayer != null && coordinates.Length == 3)
+                            {
+                                if (int.TryParse(coordinates[0], out int coord_x) && int.TryParse(coordinates[1], out int coord_y) && int.TryParse(coordinates[2], out int coord_z))
+                                {
+                                    Player.m_localPlayer.TeleportTo(new Vector3(coord_x, coord_y, coord_z), Player.m_localPlayer.transform.rotation, true);
+                                }
+                            }
+                        }
+                    }
+                    UI.Controls.EndSection();
+
+                    UI.Controls.BeginSection("$vt_player_heal_manager_title");
+                    {
+                        GUILayout.BeginHorizontal();
+                        {
+                            UI.Controls.FieldLabel("$vt_player_heal_player");
+
+                            s_healTargetIdx = RGUI.SelectionPopup(s_healTargetIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
+                        }
+                        GUILayout.EndHorizontal();
+
+                        if (UI.Controls.ActionButton("$vt_player_heal_selected_player", FeatureMethod.Direct))
+                        {
+                            if (s_healTargetIdx < s_players.Count && s_healTargetIdx >= 0)
+                            {
+                                s_players[s_healTargetIdx].VTHeal();
+                            }
+                        }
+                        if (UI.Controls.ActionButton("$vt_player_heal_all_players", FeatureMethod.Direct))
+                        {
+                            foreach (Player player in s_players)
+                            {
+                                player.VTHeal();
+                            }
+                        }
+                    }
+                    UI.Controls.EndSection();
+
+                    UI.Controls.BeginSection("$vt_player_cheat_status_title");
+                    {
+                        CheatStatus.Draw();
+                        if (UI.Controls.ActionButton("$vt_player_clean_cheated_inventory", FeatureMethod.Direct))
+                        {
+                            int cleared = InventoryCleaner.ClearLocalPlayer();
+                            if (Player.m_localPlayer != null)
+                            {
+                                Player.m_localPlayer.VTSendMessage(VTLocalization.instance.Localize("$vt_player_clean_cheated_done") + " " + cleared);
+                            }
+                        }
+                        if (UI.Controls.ActionButton("$vt_player_clean_cheated_container", FeatureMethod.Direct))
+                        {
+                            Inventory container = CheatStatus.GetOpenContainerInventory();
+                            int cleared = InventoryCleaner.Clear(container);
+                            if (Player.m_localPlayer != null)
+                            {
+                                string message = container == null
+                                    ? VTLocalization.instance.Localize("$vt_player_cheat_status_closed")
+                                    : VTLocalization.instance.Localize("$vt_player_clean_cheated_done") + " " + cleared;
+                                Player.m_localPlayer.VTSendMessage(message);
+                            }
+                        }
+                        if (UI.Controls.ActionButton("$vt_player_clean_cheated_drops", FeatureMethod.Direct))
+                        {
+                            int cleared = InventoryCleaner.ClearNearbyDropped(CheatStatus.DropCleanRadius);
+                            CheatStatus.ForceGroundRefresh();
+                            if (Player.m_localPlayer != null)
+                            {
+                                Player.m_localPlayer.VTSendMessage(VTLocalization.instance.Localize("$vt_player_clean_cheated_done") + " " + cleared);
+                            }
+                        }
+                        CheatStatus.DropCleanRadius = UI.Controls.LabeledSlider(
+                            "$vt_player_clean_cheated_drops_radius",
+                            CheatStatus.DropCleanRadius,
+                            1f,
+                            80f,
+                            CheatStatus.DropCleanRadius.ToString("0.0") + "m",
+                            "$vt_player_clean_cheated_drops_radius");
+                        CheatStatus.DrawCleanPreviewCount();
+
+                        bool achievements = CheatStatus.GetAchievementsBypass();
+                        bool nextAchievements = UI.Controls.LabeledToggle("$vt_player_achievements_bypass", achievements);
+                        if (nextAchievements != achievements)
+                        {
+                            CheatStatus.SetAchievementsBypass(nextAchievements);
+                        }
+                    }
+                    UI.Controls.EndSection();
                 }
                 GUILayout.EndVertical();
             }
@@ -566,13 +663,37 @@ namespace ValheimTooler.Core
             }
         }
 
+        private static bool IsNoPlacementCostActive()
+        {
+            return SilentNoPlacement.Enabled || Player.m_localPlayer.VTIsNoPlacementCost();
+        }
+
+        private static void SetNoPlacementCost(bool enabled, FeatureMethod method)
+        {
+            if (method == FeatureMethod.DevCommands)
+            {
+                SilentNoPlacement.Enabled = false;
+                Player.m_localPlayer.VTSetNoPlacementCost(enabled);
+                SilentNoPlacement.RefreshPieces();
+                return;
+            }
+
+            if (Player.m_localPlayer.VTIsNoPlacementCost())
+            {
+                Player.m_localPlayer.VTSetNoPlacementCost(false);
+            }
+
+            SilentNoPlacement.Enabled = enabled;
+            SilentNoPlacement.RefreshPieces();
+        }
+
         private static void ActionCurrentPlayerToggleNoPlacementCost(bool sendNotification = false)
         {
-            Player.m_localPlayer.VTSetNoPlacementCost(!Player.m_localPlayer.VTIsNoPlacementCost());
+            SetNoPlacementCost(!IsNoPlacementCostActive(), s_noPlacementMethod);
 
             if (sendNotification)
             {
-                Player.m_localPlayer.VTSendMessage(UI.Utils.ToggleButtonLabel("$vt_player_no_placement_cost", Player.m_localPlayer.VTIsNoPlacementCost()));
+                Player.m_localPlayer.VTSendMessage(UI.Utils.ToggleButtonLabel("$vt_player_no_placement_cost", IsNoPlacementCostActive()));
             }
         }
 

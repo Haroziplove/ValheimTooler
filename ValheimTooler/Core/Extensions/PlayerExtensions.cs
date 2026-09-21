@@ -143,31 +143,38 @@ namespace ValheimTooler.Core.Extensions
             }
         }
 
-        public static void VTAddItemToInventory(this Player player, string itemPrefab, int quantity, int quality, int variant)
+        public static void VTAddItemToInventory(this Player player, string itemPrefab, int quantity, int quality, int variant, bool cheated = false, string crafterName = null, bool setCrafter = true)
         {
             if (player != null && Game.instance != null)
             {
-                long playerID = player.GetPlayerID();
-                string playerName = player.GetPlayerName();
+                long crafterID = 0L;
+                string name = "";
+                if (setCrafter)
+                {
+                    crafterID = player.GetPlayerID();
+                    name = string.IsNullOrEmpty(crafterName) ? player.GetPlayerName() : crafterName;
+                }
 
-                player.GetInventory().AddItem(itemPrefab, quantity, quality, variant, playerID, playerName, true, false);
+                player.GetInventory().AddItem(itemPrefab, quantity, quality, variant, crafterID, name, cheated, false);
             }
         }
 
-        public static void VTTameNearbyCreatures(this Player player)
+        public static void VTTameNearbyCreatures(this Player player, float radius = 20f)
         {
             if (player != null)
             {
-                Tameable.TameAllInArea(player.transform.position, 20f);
+                Tameable.TameAllInArea(player.transform.position, radius);
             }
         }
 
         public static void VTSendMessage(this Player player, string message)
         {
-            if (player != null)
+            if (string.IsNullOrEmpty(message) || MessageHud.instance == null)
             {
-                player.Message(MessageHud.MessageType.Center, message);
+                return;
             }
+
+            MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, message, 0, null, true, false);
         }
     }
 }

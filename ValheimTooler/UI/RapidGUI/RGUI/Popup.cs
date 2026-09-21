@@ -10,10 +10,16 @@ namespace RapidGUI
         static readonly PopupWindow s_popupWindow = new PopupWindow();
         static readonly SearchablePopupWindow s_searchablePopupWindow = new SearchablePopupWindow();
 
+        private static GUIStyle DropdownStyle()
+        {
+            GUIStyle style = InterfaceMaker.CustomSkin.FindStyle("dropdown");
+            return style != null ? style : InterfaceMaker.CustomSkin.textField;
+        }
+
         public static string SelectionPopup(string current, string[] displayOptions)
         {
             var idx = Array.IndexOf(displayOptions, current);
-            GUILayout.Box(current, InterfaceMaker.CustomSkin.textField);
+            GUILayout.Box(current ?? "", DropdownStyle(), GUILayout.MinHeight(26), GUILayout.ExpandWidth(true));
             var newIdx = PopupOnLastRect(idx, displayOptions);
             if ( newIdx != idx)
             {
@@ -24,15 +30,15 @@ namespace RapidGUI
 
         public static int SelectionPopup(int selectionIndex, string[] displayOptions)
         {
-            var label = (selectionIndex < 0 || displayOptions.Length <= selectionIndex) ? "" : displayOptions[selectionIndex];
-            GUILayout.Box(label, InterfaceMaker.CustomSkin.textField);
+            var label = (selectionIndex < 0 || displayOptions == null || displayOptions.Length <= selectionIndex) ? "" : displayOptions[selectionIndex];
+            GUILayout.Box(label ?? "", DropdownStyle(), GUILayout.MinHeight(26), GUILayout.MinWidth(80), GUILayout.ExpandWidth(true));
             return PopupOnLastRect(selectionIndex, displayOptions);
         }
 
         public static string SearchableSelectionPopup(string current, string[] displayOptions, ref string searchTerms)
         {
             var idx = Array.IndexOf(displayOptions, current);
-            GUILayout.Box(current, InterfaceMaker.CustomSkin.textField);
+            GUILayout.Box(current ?? "", DropdownStyle(), GUILayout.MinHeight(26), GUILayout.ExpandWidth(true));
             var newIdx = SearchablePopupOnLastRect(idx, displayOptions, ref searchTerms);
             if (newIdx != idx)
             {
@@ -43,9 +49,10 @@ namespace RapidGUI
 
         public static int SearchableSelectionPopup(int selectionIndex, string[] displayOptions, ref string searchTerms)
         {
-            var label = (selectionIndex < 0 || displayOptions.Length <= selectionIndex) ? "" : displayOptions[selectionIndex];
-            GUILayout.Box(label, InterfaceMaker.CustomSkin.textField);
-            return SearchablePopupOnLastRect(selectionIndex, displayOptions, ref searchTerms);
+            var label = (selectionIndex < 0 || displayOptions == null || displayOptions.Length <= selectionIndex) ? "" : displayOptions[selectionIndex];
+            GUILayout.Box(label ?? "", DropdownStyle(), GUILayout.MinHeight(26), GUILayout.MinWidth(80), GUILayout.ExpandWidth(true));
+            Rect rect = GUILayoutUtility.GetLastRect();
+            return SearchablePopup(rect, -1, selectionIndex, displayOptions, ref searchTerms);
         }
 
 
@@ -57,6 +64,21 @@ namespace RapidGUI
         public static int SearchablePopupOnLastRect(string[] displayOptions, ref string searchTerms, string label = "") => SearchablePopupOnLastRect(-1, displayOptions, ref searchTerms, -1, label);
         public static int SearchablePopupOnLastRect(string[] displayOptions, int button, ref string searchTerms, string label = "") => SearchablePopupOnLastRect(-1, displayOptions, ref searchTerms, button, label);
         public static int SearchablePopupOnLastRect(int selectionIndex, string[] displayOptions, ref string searchTerms, int mouseButton = -1, string label = "") => SearchablePopup(GUILayoutUtility.GetLastRect(), mouseButton, selectionIndex, displayOptions, ref searchTerms, label);
+
+        public static bool IsPopupOpen()
+        {
+            return s_popupControlId != 0;
+        }
+
+        public static bool IsPointerOverPopup(Vector2 guiMouse)
+        {
+            if (s_popupControlId == 0)
+            {
+                return false;
+            }
+
+            return s_popupWindow.GetWindowRect().Contains(guiMouse) || s_searchablePopupWindow.GetWindowRect().Contains(guiMouse);
+        }
 
 
         public static int Popup(Rect launchRect, int mouseButton, int selectionIndex, string[] displayOptions, string label = "")
@@ -73,8 +95,7 @@ namespace RapidGUI
                 if ((ev.type == EventType.MouseUp)
                     && ((mouseButton < 0) || (ev.button == mouseButton))
                     && launchRect.Contains(pos)
-                    && displayOptions != null 
-                    && displayOptions.Length > 0
+                    && displayOptions != null
                     )
                 {
                     s_popupWindow.pos = RGUIUtility.GetMouseScreenPos(Vector2.one * 150f);
@@ -129,7 +150,6 @@ namespace RapidGUI
                         contentSize += new Vector2(vbarSize.x + vbarMargin.horizontal, hbarSize.y + hbarMargin.vertical) + Vector2.one * offset;
                         var size = InterfaceMaker.CustomSkin.GetStyle("popup").CalcScreenSize(contentSize);
                         var maxSize = new Vector2(Screen.width, Screen.height) - s_popupWindow.pos;
-
                         s_popupWindow.size = Vector2.Min(size, maxSize);
                     }
 
@@ -157,10 +177,10 @@ namespace RapidGUI
                     && ((mouseButton < 0) || (ev.button == mouseButton))
                     && launchRect.Contains(pos)
                     && displayOptions != null
-                    && displayOptions.Length > 0
                     )
                 {
                     s_searchablePopupWindow.pos = RGUIUtility.GetMouseScreenPos(Vector2.one * 150f);
+                    s_searchablePopupWindow.focusSearch = true;
                     s_popupControlId = controlId;
                     ev.Use();
                 }
@@ -209,11 +229,13 @@ namespace RapidGUI
 
                         if (displayOptions.Length == 0)
                         {
-                            contentSize.x += 150;
+                            Vector2 noResultsSize = GUI.skin.label.CalcSize(RGUIUtility.TempContent("No results has been found!"));
+                            contentSize.x = Mathf.Max(contentSize.x, noResultsSize.x + 20f);
+                            contentSize.y += noResultsSize.y + 16f;
                         }
 
                         var margin = buttonStyle.margin;
-                        contentSize.y += Mathf.Max(0, displayOptions.Length - 1) * Mathf.Max(margin.top, margin.bottom); // is this right?
+                        contentSize.y += Mathf.Max(0, displayOptions.Length - 1) * Mathf.Max(margin.top, margin.bottom);
 
                         var vbarSkin = InterfaceMaker.CustomSkin.verticalScrollbar;
                         var vbarSize = vbarSkin.CalcScreenSize(Vector2.zero);
@@ -230,7 +252,6 @@ namespace RapidGUI
 
                         var size = InterfaceMaker.CustomSkin.GetStyle("popup").CalcScreenSize(contentSize);
                         var maxSize = new Vector2(Screen.width, Screen.height) - s_searchablePopupWindow.pos;
-
                         s_searchablePopupWindow.size = Vector2.Min(size, maxSize);
                     }
 
@@ -243,7 +264,6 @@ namespace RapidGUI
 
             return ret;
         }
-
 
         class PopupWindow : IDoGUIWindow
         {
@@ -293,6 +313,7 @@ namespace RapidGUI
         {
             public string _searchTerms;
             public string[] _displayOptionsCopy;
+            public bool focusSearch;
 
             public void SetSearchTerms(string searchTerms)
             {
@@ -303,18 +324,33 @@ namespace RapidGUI
             {
                 GUI.skin = InterfaceMaker.CustomSkin;
 
-                if ((Event.current.type == EventType.Layout))
+                if (Event.current.type == EventType.Layout && displayOptions != null)
                 {
                     _displayOptionsCopy = (string[])displayOptions.Clone();
                 }
 
                 GUI.ModalWindow(s_popupWindowId, GetWindowRect(), (id) =>
                 {
-                    _searchTerms = GUILayout.TextField(_searchTerms);
-
-                    if (_displayOptionsCopy.Length == 0)
+                    GUIStyle searchStyle = InterfaceMaker.CustomSkin.FindStyle("searchField");
+                    if (searchStyle == null)
                     {
-                        GUILayout.Label("No results has been found!", GUILayout.Width(150));
+                        searchStyle = InterfaceMaker.CustomSkin.textField;
+                    }
+
+                    GUI.SetNextControlName("vt_popup_search");
+                    _searchTerms = GUILayout.TextField(_searchTerms ?? "", searchStyle, GUILayout.MinHeight(28), GUILayout.ExpandWidth(true));
+                    if (focusSearch)
+                    {
+                        GUI.FocusControl("vt_popup_search");
+                        if (Event.current.type == EventType.Repaint)
+                        {
+                            focusSearch = false;
+                        }
+                    }
+
+                    if (_displayOptionsCopy == null || _displayOptionsCopy.Length == 0)
+                    {
+                        GUILayout.Label("No results has been found!");
                     }
                     else
                     {

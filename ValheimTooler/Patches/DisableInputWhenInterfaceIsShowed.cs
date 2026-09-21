@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 
@@ -7,31 +5,6 @@ namespace ValheimTooler.Patches
 {
     class DisableInputWhenInterfaceIsShowed
     {
-        [HarmonyPatch]
-        class PlayerTakeInput
-        {
-            private static IEnumerable<MethodBase> TargetMethods()
-            {
-                return PatchHelpers.FindMethods(typeof(Player), "TakeInput")
-                    .Concat(PatchHelpers.FindMethods(typeof(PlayerController), "TakeInput"));
-            }
-
-            private static bool Prepare()
-            {
-                return TargetMethods().Any();
-            }
-
-            private static bool Prefix(ref bool __result)
-            {
-                if (EntryPoint.s_showMainWindow)
-                {
-                    __result = false;
-                    return false;
-                }
-                return true;
-            }
-        }
-
         [HarmonyPatch]
         class PlayerControllerInInventoryEtc
         {
@@ -47,35 +20,12 @@ namespace ValheimTooler.Patches
 
             private static bool Prefix(ref bool __result)
             {
-                if (EntryPoint.s_showMainWindow)
+                if (EntryPoint.s_showMainWindow && EntryPoint.IsPointerOverTool())
                 {
                     __result = true;
                     return false;
                 }
-                return true;
-            }
-        }
 
-        [HarmonyPatch]
-        class InventoryInteraction
-        {
-            private static IEnumerable<MethodBase> TargetMethods()
-            {
-                return PatchHelpers.FindMethods(typeof(InventoryGrid), "OnLeftClick", "OnLeftDown", "OnRightDown")
-                    .Concat(PatchHelpers.FindMethods(typeof(InventoryGui), "OnSelectedItem", "OnRightClickItem"));
-            }
-
-            private static bool Prepare()
-            {
-                return TargetMethods().Any();
-            }
-
-            private static bool Prefix()
-            {
-                if (EntryPoint.s_showMainWindow)
-                {
-                    return false;
-                }
                 return true;
             }
         }

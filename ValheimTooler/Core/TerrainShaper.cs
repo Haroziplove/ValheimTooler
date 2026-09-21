@@ -4,7 +4,6 @@ using System.Linq;
 using RapidGUI;
 using UnityEngine;
 using ValheimTooler.Core.Extensions;
-using ValheimTooler.Patches;
 using ValheimTooler.Utils;
 
 namespace ValheimTooler.Core
@@ -15,6 +14,8 @@ namespace ValheimTooler.Core
         private static float s_depth = 1f;
         private static float s_strength = 0.01f;
         private static TerrainModifier.PaintType s_paintType = TerrainModifier.PaintType.Dirt;
+
+        public static float Radius => s_radius;
 
         public static void Start()
         {
@@ -51,17 +52,34 @@ namespace ValheimTooler.Core
             {
                 ActionTerrainPaint();
             }
+
+            TerrainRadiusPreview.UpdateFromUi();
+        }
+
+        public static bool IsPreviewHover(string action)
+        {
+            return action == "$vt_terrainshaper_radius"
+                || action == "$vt_terrainshaper_shape"
+                || action == "$vt_terrainshaper_action_level"
+                || action == "$vt_terrainshaper_action_lower"
+                || action == "$vt_terrainshaper_action_raise"
+                || action == "$vt_terrainshaper_action_reset"
+                || action == "$vt_terrainshaper_action_smooth"
+                || action == "$vt_terrainshaper_action_paint";
         }
 
         public static void DisplayGUI()
         {
-            GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_terrainshaper_settings"), GUI.skin.box, GUILayout.ExpandWidth(false));
+            UI.Controls.BeginSection("$vt_terrainshaper_settings");
             {
-                GUILayout.Space(EntryPoint.s_boxSpacing);
                 GUILayout.BeginHorizontal();
                 {
                     GUILayout.Label(VTLocalization.instance.Localize("$vt_terrainshaper_radius (") + s_radius.ToString("F1") + ")", GUILayout.ExpandWidth(false));
+                    UI.Controls.NoteHoverAction("$vt_terrainshaper_radius");
+                    UI.Controls.NoteHoverTooltip(UI.Controls.Tip("$vt_terrainshaper_radius"));
                     s_radius = GUILayout.HorizontalSlider(s_radius, 1f, 50f, GUILayout.ExpandWidth(true));
+                    UI.Controls.NoteHoverAction("$vt_terrainshaper_radius");
+                    UI.Controls.NoteHoverTooltip(UI.Controls.Tip("$vt_terrainshaper_radius"));
                 }
                 GUILayout.EndHorizontal();
 
@@ -79,47 +97,47 @@ namespace ValheimTooler.Core
                 }
                 GUILayout.EndHorizontal();
 
-                if (GUILayout.Button(UI.Utils.ToggleButtonLabelCustom("$vt_terrainshaper_shape", Ground.square, "$vt_terrainshaper_shape_square", "$vt_terrainshaper_shape_circle", ConfigManager.s_terrainShapeShortcut.Value)))
+                string shapeTip = VTLocalization.instance.Localize("$vt_terrainshaper_shape_tip");
+                if (GUILayout.Button(new GUIContent(UI.Utils.ToggleButtonLabelCustom("$vt_terrainshaper_shape", Ground.square, "$vt_terrainshaper_shape_square", "$vt_terrainshaper_shape_circle", ConfigManager.s_terrainShapeShortcut.Value), shapeTip), GUILayout.MinHeight(28)))
                 {
                     ActionToggleTerrainShape();
                 }
+                UI.Controls.NoteHoverTooltip(shapeTip);
+                UI.Controls.NoteHoverAction("$vt_terrainshaper_shape");
             }
-            GUILayout.EndVertical();
+            UI.Controls.EndSection();
 
-            GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_terrainshaper_actions"), GUI.skin.box, GUILayout.ExpandWidth(false));
+            UI.Controls.BeginSection("$vt_terrainshaper_actions");
             {
-                GUILayout.Space(EntryPoint.s_boxSpacing);
-
-                if (GUILayout.Button(UI.Utils.LabelWithShortcut("$vt_terrainshaper_action_level", ConfigManager.s_terrainLevelShortcut.Value)))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_level", FeatureMethod.Direct, ConfigManager.s_terrainLevelShortcut.Value))
                 {
                     ActionTerrainLevel();
                 }
-                if (GUILayout.Button(UI.Utils.LabelWithShortcut("$vt_terrainshaper_action_lower", ConfigManager.s_terrainLowerShortcut.Value)))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_lower", FeatureMethod.Direct, ConfigManager.s_terrainLowerShortcut.Value))
                 {
                     ActionTerrainLower();
                 }
-                if (GUILayout.Button(UI.Utils.LabelWithShortcut("$vt_terrainshaper_action_raise", ConfigManager.s_terrainRaiseShortcut.Value)))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_raise", FeatureMethod.Direct, ConfigManager.s_terrainRaiseShortcut.Value))
                 {
                     ActionTerrainRaise();
                 }
-                if (GUILayout.Button(UI.Utils.LabelWithShortcut("$vt_terrainshaper_action_reset", ConfigManager.s_terrainResetShortcut.Value)))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_reset", FeatureMethod.Direct, ConfigManager.s_terrainResetShortcut.Value))
                 {
                     ActionTerrainReset();
                 }
-                if (GUILayout.Button(UI.Utils.LabelWithShortcut("$vt_terrainshaper_action_smooth", ConfigManager.s_terrainSmoothShortcut.Value)))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_smooth", FeatureMethod.Direct, ConfigManager.s_terrainSmoothShortcut.Value))
                 {
                     ActionTerrainSmooth();
                 }
             }
-            GUILayout.EndVertical();
+            UI.Controls.EndSection();
 
-            GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_terrainshaper_painter"), GUI.skin.box, GUILayout.ExpandWidth(false));
+            UI.Controls.BeginSection("$vt_terrainshaper_painter");
             {
-                GUILayout.Space(EntryPoint.s_boxSpacing);
 
                 GUILayout.BeginHorizontal();
                 {
-                    GUILayout.Label(VTLocalization.instance.Localize("$vt_terrainshaper_paint_type :"), GUILayout.ExpandWidth(false));
+                    UI.Controls.FieldLabel("$vt_terrainshaper_paint_type");
 
                     var enumValues = Enum.GetValues(typeof(TerrainModifier.PaintType)).Cast<object>().ToList();
                     var idx = enumValues.IndexOf(s_paintType);
@@ -131,12 +149,12 @@ namespace ValheimTooler.Core
                 }
                 GUILayout.EndHorizontal();
 
-                if (GUILayout.Button(UI.Utils.LabelWithShortcut("$vt_terrainshaper_action_paint", ConfigManager.s_terrainPaintShortcut.Value)))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_paint", FeatureMethod.Direct, ConfigManager.s_terrainPaintShortcut.Value))
                 {
                     ActionTerrainPaint();
                 }
             }
-            GUILayout.EndVertical();
+            UI.Controls.EndSection();
         }
 
         private static void ActionToggleTerrainShape(bool sendNotification = false)
@@ -202,83 +220,99 @@ namespace ValheimTooler.Core
     // Class originally created by Gungnir mod: https://github.com/zambony/Gungnir
     internal static class Ground
     {
-        internal enum Operation
-        {
-            None,
-            Level,
-            Raise,
-            Lower,
-            Smooth,
-            Paint
-        }
-
         public static bool square = false;
+
+        public static Quaternion FacingRotation()
+        {
+            if (Player.m_localPlayer == null)
+            {
+                return Quaternion.identity;
+            }
+
+            Vector3 forward = Player.m_localPlayer.transform.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f)
+            {
+                return Quaternion.identity;
+            }
+
+            return Quaternion.LookRotation(forward.normalized, Vector3.up);
+        }
 
         public static void Level(Vector3 position, float radius)
         {
-            GameObject prefab = ResourceUtils.GetHiddenPrefab("mud_road_v2");
-
-            Make(prefab, position, radius, Operation.Level);
+            var settings = new TerrainOp.Settings
+            {
+                m_level = true,
+                m_levelRadius = radius,
+                m_levelOffset = 0f,
+                m_square = square
+            };
+            Apply(position, radius, settings);
         }
 
         public static void Raise(Vector3 position, float radius, float height, float strength = 0.01f)
         {
-            GameObject prefab = ResourceUtils.GetHiddenPrefab("raise_v2");
-
-            Make(prefab, position, radius, Operation.Raise, height, strength);
+            var settings = new TerrainOp.Settings
+            {
+                m_raise = true,
+                m_raiseRadius = radius,
+                m_raiseDelta = height,
+                m_raisePower = strength,
+                m_square = square
+            };
+            Apply(position, radius, settings);
         }
 
         public static void Lower(Vector3 position, float radius, float depth, float strength = 0.01f)
         {
-            GameObject prefab = ResourceUtils.GetHiddenPrefab("digg_v3");
-
-            Make(prefab, position, radius, Operation.Lower, depth, strength);
+            var settings = new TerrainOp.Settings
+            {
+                m_raise = true,
+                m_raiseRadius = radius,
+                m_raiseDelta = -depth,
+                m_raisePower = strength,
+                m_square = square
+            };
+            Apply(position, radius, settings);
         }
 
         public static void Smooth(Vector3 position, float radius, float strength = 0.5f)
         {
-            GameObject prefab = ResourceUtils.GetHiddenPrefab("mud_road_v2");
-
-            Make(prefab, position, radius, Operation.Smooth, strength);
+            var settings = new TerrainOp.Settings
+            {
+                m_smooth = true,
+                m_smoothRadius = radius,
+                m_smoothPower = strength,
+                m_square = square
+            };
+            Apply(position, radius, settings);
         }
 
         public static void Paint(Vector3 position, float radius, TerrainModifier.PaintType type)
         {
-            GameObject prefab = null;
-
-            switch (type)
+            var settings = new TerrainOp.Settings
             {
-                case TerrainModifier.PaintType.Dirt:
-                    prefab = ResourceUtils.GetHiddenPrefab("mud_road_v2");
-                    break;
-                case TerrainModifier.PaintType.Paved:
-                    prefab = ResourceUtils.GetHiddenPrefab("paved_road_v2");
-                    break;
-                case TerrainModifier.PaintType.Reset:
-                    prefab = ResourceUtils.GetHiddenPrefab("replant_v2");
-                    break;
-                case TerrainModifier.PaintType.Cultivate:
-                    prefab = ResourceUtils.GetHiddenPrefab("cultivate_v2");
-                    break;
-                default:
-                    return;
-            }
-
-            Make(prefab, position, radius, Operation.Paint);
+                m_paintCleared = true,
+                m_paintRadius = radius,
+                m_paintType = type,
+                m_paintStrength = 1f,
+                m_square = square
+            };
+            Apply(position, radius, settings);
         }
 
         public static void Reset(Vector3 position, float radius)
         {
-            // Remove all Terrain V2 edits. These are typically done by mods,
-            // or are present in very old save files that haven't run the "optterrain" console command.
             foreach (var obj in TerrainModifier.GetAllInstances())
             {
                 if (global::Utils.DistanceXZ(position, obj.transform.position) <= radius)
                 {
                     ZNetView netView = obj.GetComponent<ZNetView>();
-
                     if (netView == null)
+                    {
                         continue;
+                    }
 
                     netView.ClaimOwnership();
                     netView.Destroy();
@@ -288,20 +322,22 @@ namespace ValheimTooler.Core
             List<Heightmap> heightmaps = new List<Heightmap>();
             Heightmap.FindHeightmap(position, radius + 50f, heightmaps);
 
-            bool resetGrass = false;
-
             foreach (Heightmap heightmap in heightmaps)
             {
-                bool modified = false;
-                TerrainComp compiler = TerrainComp.FindTerrainCompiler(heightmap.transform.position);
-
-                if (compiler == null)
+                TerrainComp compiler = heightmap.GetAndCreateTerrainCompiler();
+                if (compiler == null || !compiler.GetFieldValue<bool>("m_initialized"))
+                {
                     continue;
+                }
 
-                if (!compiler.GetFieldValue<bool>("m_initialized"))
-                    continue;
+                ClaimCompiler(compiler);
 
                 heightmap.WorldToVertex(position, out int x, out int y);
+                float scale = heightmap.GetFieldValue<float>("m_scale");
+                if (scale <= 0f)
+                {
+                    scale = 1f;
+                }
 
                 int width = compiler.GetFieldValue<int>("m_width");
                 float[] levelDelta = compiler.GetFieldValue<float[]>("m_levelDelta");
@@ -309,129 +345,296 @@ namespace ValheimTooler.Core
                 bool[] modifiedHeight = compiler.GetFieldValue<bool[]>("m_modifiedHeight");
                 Color[] paintMask = compiler.GetFieldValue<Color[]>("m_paintMask");
                 bool[] modifiedPaint = compiler.GetFieldValue<bool[]>("m_modifiedPaint");
+                if (levelDelta == null || modifiedHeight == null)
+                {
+                    continue;
+                }
 
                 for (int h = 0; h <= width; ++h)
                 {
                     for (int w = 0; w <= width; ++w)
                     {
-                        if (Distance2D(x, y, w, h) > radius)
-                            continue;
-
-                        int heightIndex = w + (h * (width + 1));
-
-                        if (modifiedHeight[heightIndex])
+                        if (!InsideReset(heightmap, position, w, h, radius, scale, width))
                         {
-                            modifiedHeight[heightIndex] = false;
-                            levelDelta[heightIndex] = 0;
-                            smoothDelta[heightIndex] = 0;
-                            modified = true;
-                            resetGrass = true;
+                            continue;
                         }
 
-                        if (h < width && w < width)
+                        int heightIndex = w + (h * (width + 1));
+                        if (heightIndex >= 0 && heightIndex < modifiedHeight.Length)
+                        {
+                            modifiedHeight[heightIndex] = false;
+                            levelDelta[heightIndex] = 0f;
+                            if (smoothDelta != null && heightIndex < smoothDelta.Length)
+                            {
+                                smoothDelta[heightIndex] = 0f;
+                            }
+                        }
+
+                        if (h < width && w < width && modifiedPaint != null && paintMask != null)
                         {
                             int paintIndex = w + (h * width);
-
-                            if (modifiedPaint[paintIndex])
+                            if (paintIndex >= 0 && paintIndex < modifiedPaint.Length)
                             {
                                 modifiedPaint[paintIndex] = false;
                                 paintMask[paintIndex] = Color.clear;
-                                modified = true;
-                                resetGrass = true;
                             }
                         }
                     }
                 }
-
-                if (!modified)
-                    continue;
 
                 compiler.SetFieldValue("m_levelDelta", levelDelta);
                 compiler.SetFieldValue("m_smoothDelta", smoothDelta);
                 compiler.SetFieldValue("m_modifiedHeight", modifiedHeight);
                 compiler.SetFieldValue("m_paintMask", paintMask);
                 compiler.SetFieldValue("m_modifiedPaint", modifiedPaint);
+                compiler.CallMethod("Save", false);
 
-                compiler.CallMethod("Save");
-                heightmap.Poke(1, true);
+                ZNetView netView = compiler.GetComponent<ZNetView>();
+                if (netView != null && netView.IsValid() && ZDOMan.instance != null)
+                {
+                    ZDO zdo = netView.GetZDO();
+                    if (zdo != null)
+                    {
+                        ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+                    }
+                }
 
-                // Push new terrain data to all clients.
-                var zdo = compiler.GetComponent<ZNetView>().GetZDO();
-                ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+                heightmap.Poke(0, false);
             }
 
-            if (ClutterSystem.instance != null && resetGrass)
+            if (ClutterSystem.instance != null)
+            {
                 ClutterSystem.instance.ResetGrass(position, radius);
+            }
         }
 
-        private static void Make(GameObject prefab, Vector3 position, float radius, Operation op, params object[] args)
+        private static bool InsideReset(Heightmap heightmap, Vector3 center, int x, int y, float radius, float scale, int width)
         {
-            // This might stop some of the particle spam when making terrain mods.
-            TerrainModifier.SetTriggerOnPlaced(false);
-            bool wasActive = prefab.activeSelf || prefab.activeInHierarchy;
-            // All the terrain prefabs we're using apply terrain modifications the moment they spawn.
-            // We want to modify the operation before it's applied, so disabling the object before instantiating it
-            // allows us to delay the Awake() method.
-            prefab.SetActive(false);
-            TerrainOp mod = prefab.GetComponentInChildren<TerrainOp>();
-
-            // Some ground pieces spawn with an offset. Account for it.
-            float levelOffset = mod.m_settings.m_levelOffset;
-
-            GameObject spawned = UnityEngine.Object.Instantiate(prefab, position - Vector3.up * levelOffset, Quaternion.identity);
-            // Restore the original prefab to its active state since we disabled it before making a clone.
-            prefab.SetActive(wasActive);
-
-            mod = spawned.GetComponentInChildren<TerrainOp>();
-
-            // Delete all the smoke/rock/dirt particle effects on spawn.
-            mod.m_onPlacedEffect = new EffectList();
-
-            // Modify terrain settings.
-            mod.m_settings.m_square = square;
-
-            if (op == Operation.Level)
+            Vector3 world = VertexWorld(heightmap, x, y, scale, width);
+            if (!square)
             {
-                mod.m_settings.m_level = true;
-                mod.m_settings.m_levelRadius = radius;
-                mod.m_settings.m_levelOffset = 0f;
-                mod.m_settings.m_smooth = false;
-            }
-            else if (op == Operation.Raise || op == Operation.Lower)
-            {
-                mod.m_settings.m_raise = true;
-                mod.m_settings.m_raiseRadius = radius;
-                mod.m_settings.m_raiseDelta = (float)args[0];
-                mod.m_settings.m_raisePower = (float)args[1];
-
-                if (op == Operation.Lower)
-                    mod.m_settings.m_raiseDelta *= -1f;
-            }
-            else if (op == Operation.Smooth)
-            {
-                mod.m_settings.m_level = false;
-                mod.m_settings.m_smooth = true;
-                mod.m_settings.m_smoothPower = (float)args[0];
-            }
-            else if (op == Operation.Paint)
-            {
-                mod.m_settings.m_level = false;
-                mod.m_settings.m_smooth = false;
-                mod.m_settings.m_raise = false;
+                return global::Utils.DistanceXZ(center, world) <= radius;
             }
 
-            mod.m_settings.m_paintRadius = radius;
-            mod.m_settings.m_smoothRadius = radius;
-
-            // All done, let Unity call Awake() and stuff.
-            spawned.SetActive(true);
+            return InsideFacingShape(center, world, radius, Quaternion.Inverse(FacingRotation()));
         }
 
-        public static float Distance2D(float x1, float y1, float x2, float y2)
+        private static void Apply(Vector3 position, float radius, TerrainOp.Settings settings)
         {
-            float a = x2 - x1;
-            float b = y2 - y1;
-            return Mathf.Sqrt(a * a + b * b);
+            List<Heightmap> heightmaps = new List<Heightmap>();
+            Heightmap.FindHeightmap(position, radius * 1.5f + 16f, heightmaps);
+
+            foreach (Heightmap heightmap in heightmaps)
+            {
+                TerrainComp compiler = heightmap.GetAndCreateTerrainCompiler();
+                if (compiler == null)
+                {
+                    continue;
+                }
+
+                if (!compiler.GetFieldValue<bool>("m_initialized"))
+                {
+                    compiler.CallMethod("Initialize");
+                }
+
+                ClaimCompiler(compiler);
+                if (square)
+                {
+                    ApplyRotated(heightmap, compiler, position, radius, settings);
+                }
+                else
+                {
+                    compiler.CallMethod("DoOperation", position, Vector3.zero, settings);
+                }
+            }
         }
+
+        private static void ApplyRotated(Heightmap heightmap, TerrainComp compiler, Vector3 position, float radius, TerrainOp.Settings settings)
+        {
+            heightmap.WorldToVertex(position, out int originX, out int originY);
+            float scale = heightmap.GetFieldValue<float>("m_scale");
+            if (scale <= 0f)
+            {
+                scale = 1f;
+            }
+
+            int width = compiler.GetFieldValue<int>("m_width");
+            int pitch = width + 1;
+            int extent = Mathf.CeilToInt(radius * 1.42f / scale) + 2;
+            float[] levelDelta = compiler.GetFieldValue<float[]>("m_levelDelta");
+            float[] smoothDelta = compiler.GetFieldValue<float[]>("m_smoothDelta");
+            bool[] modifiedHeight = compiler.GetFieldValue<bool[]>("m_modifiedHeight");
+            Color[] paintMask = compiler.GetFieldValue<Color[]>("m_paintMask");
+            bool[] modifiedPaint = compiler.GetFieldValue<bool[]>("m_modifiedPaint");
+            if (levelDelta == null || modifiedHeight == null)
+            {
+                return;
+            }
+
+            float targetLocalY = position.y - compiler.transform.position.y;
+            Quaternion inverseFacing = Quaternion.Inverse(FacingRotation());
+            Color paintColor = PaintColor(settings.m_paintType);
+
+            for (int y = originY - extent; y <= originY + extent; y++)
+            {
+                for (int x = originX - extent; x <= originX + extent; x++)
+                {
+                    if (x < 0 || y < 0 || x >= pitch || y >= pitch)
+                    {
+                        continue;
+                    }
+
+                    Vector3 world = VertexWorld(heightmap, x, y, scale, width);
+                    if (!InsideFacingShape(position, world, radius, inverseFacing))
+                    {
+                        continue;
+                    }
+
+                    int heightIndex = y * pitch + x;
+                    if (heightIndex < 0 || heightIndex >= modifiedHeight.Length)
+                    {
+                        continue;
+                    }
+
+                    if (settings.m_level)
+                    {
+                        ApplyLevelVertex(heightmap, x, y, heightIndex, targetLocalY, levelDelta, smoothDelta, modifiedHeight);
+                    }
+                    else if (settings.m_raise)
+                    {
+                        ApplyRaiseVertex(heightmap, x, y, heightIndex, targetLocalY, settings.m_raiseDelta, levelDelta, smoothDelta, modifiedHeight);
+                    }
+                    else if (settings.m_smooth)
+                    {
+                        ApplySmoothVertex(heightmap, x, y, heightIndex, targetLocalY, settings.m_smoothPower, position, world, radius, smoothDelta, modifiedHeight);
+                    }
+
+                    if (settings.m_paintCleared && paintMask != null && modifiedPaint != null)
+                    {
+                        int paintIndex = heightIndex < paintMask.Length ? heightIndex : x + y * width;
+                        if (paintIndex >= 0 && paintIndex < paintMask.Length && paintIndex < modifiedPaint.Length)
+                        {
+                            paintMask[paintIndex] = paintColor;
+                            modifiedPaint[paintIndex] = true;
+                        }
+                    }
+                }
+            }
+
+            compiler.SetFieldValue("m_levelDelta", levelDelta);
+            compiler.SetFieldValue("m_smoothDelta", smoothDelta);
+            compiler.SetFieldValue("m_modifiedHeight", modifiedHeight);
+            compiler.SetFieldValue("m_paintMask", paintMask);
+            compiler.SetFieldValue("m_modifiedPaint", modifiedPaint);
+            compiler.CallMethod("Save", false);
+            heightmap.Poke(0, false);
+            if (ClutterSystem.instance != null)
+            {
+                ClutterSystem.instance.ResetGrass(position, radius);
+            }
+        }
+
+        private static void ApplyLevelVertex(Heightmap heightmap, int x, int y, int index, float targetLocalY, float[] levelDelta, float[] smoothDelta, bool[] modifiedHeight)
+        {
+            float height = heightmap.GetHeight(x, y);
+            float delta = targetLocalY - height;
+            if (smoothDelta != null && index < smoothDelta.Length)
+            {
+                delta += smoothDelta[index];
+                smoothDelta[index] = 0f;
+            }
+
+            levelDelta[index] = Mathf.Clamp(levelDelta[index] + delta, -8f, 8f);
+            modifiedHeight[index] = true;
+        }
+
+        private static void ApplyRaiseVertex(Heightmap heightmap, int x, int y, int index, float targetLocalY, float raiseDelta, float[] levelDelta, float[] smoothDelta, bool[] modifiedHeight)
+        {
+            float factor = 1f;
+            float height = heightmap.GetHeight(x, y);
+            float amount = raiseDelta * factor;
+            float target = targetLocalY + amount;
+            if (raiseDelta < 0f && target > height)
+            {
+                return;
+            }
+            if (raiseDelta > 0f && target < height)
+            {
+                return;
+            }
+            if (raiseDelta > 0f && target > height + amount)
+            {
+                target = height + amount;
+            }
+
+            float change = target - height;
+            if (smoothDelta != null && index < smoothDelta.Length)
+            {
+                change += smoothDelta[index];
+                smoothDelta[index] = 0f;
+            }
+
+            levelDelta[index] = Mathf.Clamp(levelDelta[index] + change, -8f, 8f);
+            modifiedHeight[index] = true;
+        }
+
+        private static void ApplySmoothVertex(Heightmap heightmap, int x, int y, int index, float targetLocalY, float power, Vector3 center, Vector3 world, float radius, float[] smoothDelta, bool[] modifiedHeight)
+        {
+            float dist = global::Utils.DistanceXZ(center, world);
+            float t = Mathf.Clamp01(dist / Mathf.Max(0.01f, radius));
+            t = Mathf.Approximately(power, 3f) ? t * t * t : Mathf.Pow(t, power);
+            float height = heightmap.GetHeight(x, y);
+            float change = Mathf.Lerp(height, targetLocalY, 1f - t) - height;
+            if (smoothDelta != null && index < smoothDelta.Length)
+            {
+                smoothDelta[index] = Mathf.Clamp(smoothDelta[index] + change, -1f, 1f);
+            }
+
+            modifiedHeight[index] = true;
+        }
+
+        private static bool InsideFacingShape(Vector3 center, Vector3 point, float radius, Quaternion inverseFacing)
+        {
+            Vector3 local = inverseFacing * new Vector3(point.x - center.x, 0f, point.z - center.z);
+            return Mathf.Abs(local.x) <= radius && Mathf.Abs(local.z) <= radius;
+        }
+
+        private static Vector3 VertexWorld(Heightmap heightmap, int x, int y, float scale, int width)
+        {
+            int half = width / 2;
+            Vector3 origin = heightmap.transform.position;
+            return new Vector3(origin.x + (x - half) * scale, origin.y, origin.z + (y - half) * scale);
+        }
+
+        private static Color PaintColor(TerrainModifier.PaintType type)
+        {
+            switch (type)
+            {
+                case TerrainModifier.PaintType.Dirt:
+                    return Heightmap.m_paintMaskDirt;
+                case TerrainModifier.PaintType.Cultivate:
+                    return Heightmap.m_paintMaskCultivated;
+                case TerrainModifier.PaintType.Paved:
+                    return Heightmap.m_paintMaskPaved;
+                case TerrainModifier.PaintType.Reset:
+                    return Heightmap.m_paintMaskNothing;
+                case TerrainModifier.PaintType.ClearVegetation:
+                    return Heightmap.m_paintMaskClearVegetation;
+                case TerrainModifier.PaintType.DeepSnow:
+                    return Heightmap.m_paintMaskDeepSnow;
+                default:
+                    return Color.clear;
+            }
+        }
+
+        private static void ClaimCompiler(TerrainComp compiler)
+        {
+            ZNetView netView = compiler.GetComponent<ZNetView>();
+            if (netView != null && netView.IsValid() && !netView.IsOwner())
+            {
+                netView.ClaimOwnership();
+            }
+        }
+
     }
 }

@@ -26,9 +26,9 @@ namespace ValheimTooler.Patches
                     return true;
                 }
                 var m_noPlacementCost = Player.m_localPlayer.GetFieldValue<bool>("m_noPlacementCost");
-                if (m_noPlacementCost)
+                if (m_noPlacementCost || SilentNoPlacement.Enabled)
                 {
-                    __result = m_noPlacementCost;
+                    __result = true;
                     return false;
                 }
                 return true;

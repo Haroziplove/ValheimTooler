@@ -42,9 +42,16 @@ namespace ValheimTooler.Utils
 
         public static ConfigEntry<Vector2> s_mainWindowPosition;
         public static ConfigEntry<Vector2> s_itemGiverWindowPosition;
+        public static ConfigEntry<Vector2> s_recipeManagerWindowPosition;
         public static ConfigEntry<bool> s_permanentPins;
         public static ConfigEntry<bool> s_espRadiusEnabled;
         public static ConfigEntry<float> s_espRadius;
+        public static ConfigEntry<float> s_cleanDroppedRadius;
+        public static ConfigEntry<float> s_tameRadius;
+        public static ConfigEntry<float> s_removeDropsRadius;
+        public static ConfigEntry<bool> s_cheatMinimapIndicators;
+        public static ConfigEntry<float> s_killRadius;
+        public static ConfigEntry<float> s_autopinRadius;
 
         static ConfigManager()
         {
@@ -105,9 +112,16 @@ namespace ValheimTooler.Utils
 
             s_mainWindowPosition = s_internalFile.Bind("Internal", "MainWindowPosition", new Vector2(5, 5));
             s_itemGiverWindowPosition = s_internalFile.Bind("Internal", "ItemGiverPosition", new Vector2(Screen.width - 400, 5));
+            s_recipeManagerWindowPosition = s_internalFile.Bind("Internal", "RecipeManagerPosition", new Vector2(Mathf.Max(5, Screen.width - 930), 5));
             s_permanentPins = s_internalFile.Bind("Internal", "PermanentPins", false);
-            s_espRadiusEnabled = s_internalFile.Bind("Internal", "RadiusEnabled", false);
+            s_espRadiusEnabled = s_internalFile.Bind("Internal", "EspRadiusEnabled", false);
             s_espRadius = s_internalFile.Bind("Internal", "RadiusValue", 5f);
+            s_cleanDroppedRadius = s_internalFile.Bind("Internal", "CleanDroppedRadius", 20f);
+            s_tameRadius = s_internalFile.Bind("Internal", "TameRadius", 20f);
+            s_removeDropsRadius = s_internalFile.Bind("Internal", "RemoveDropsRadius", 20f);
+            s_cheatMinimapIndicators = s_internalFile.Bind("Internal", "CheatMinimapIndicators", true);
+            s_killRadius = s_internalFile.Bind("Internal", "KillRadius", 20f);
+            s_autopinRadius = s_internalFile.Bind("Internal", "AutopinRadius", 80f);
 
             s_settingsFile.OrphanedEntries.Clear();
             s_internalFile.OrphanedEntries.Clear();

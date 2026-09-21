@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -152,13 +152,19 @@
     <Compile Include="Configuration\TomlTypeConverter.cs" />
     <Compile Include="Configuration\TypeConverter.cs" />
     <Compile Include="Core\EntitiesItemsHacks.cs" />
+    <Compile Include="Core\FeatureMethod.cs" />
+    <Compile Include="Core\CheatStatus.cs" />
+    <Compile Include="Core\InventoryCleaner.cs" />
     <Compile Include="Core\Extensions\CharacterExtensions.cs" />
     <Compile Include="Core\Extensions\MinimapExtensions.cs" />
     <Compile Include="Core\Extensions\PlayerExtensions.cs" />
     <Compile Include="Core\ItemGiver.cs" />
+    <Compile Include="Core\RecipeManager.cs" />
     <Compile Include="Core\MiscHacks.cs" />
     <Compile Include="Core\PlayerHacks.cs" />
+    <Compile Include="Core\TerrainRadiusPreview.cs" />
     <Compile Include="Core\TerrainShaper.cs" />
+    <Compile Include="Core\EspRadiusMap.cs" />
     <Compile Include="Core\WindowToolbar.cs" />
     <Compile Include="Models\Mono\PinnedObject.cs" />
     <Compile Include="Models\TPTarget.cs" />
@@ -169,7 +175,10 @@
     <Compile Include="Patches\InstantCraft.cs" />
     <Compile Include="Patches\InventoryNoWeightLimit.cs" />
     <Compile Include="Patches\NoPlacementCostRepair.cs" />
+    <Compile Include="Patches\SilentNoPlacementCost.cs" />
     <Compile Include="Patches\DisableInputWhenInterfaceIsShowed.cs" />
+    <Compile Include="Patches\BlockCameraZoom.cs" />
+    <Compile Include="Patches\RecipeLearnLog.cs" />
     <Compile Include="Patches\PatchHelpers.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -177,6 +186,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Core\ESP.cs" />
+    <Compile Include="UI\Controls.cs" />
     <Compile Include="UI\InterfaceMaker.cs" />
     <Compile Include="UI\Utils.cs" />
     <Compile Include="Utils\ConfigManager.cs" />
@@ -232,8 +242,6 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>if $(ConfigurationName) == Release (
-  PowerShell -ExecutionPolicy Unrestricted -NoProfile -NonInteractive -File "$(SolutionDir)scripts\postbuild_cleanup.ps1" -TargetDir $(TargetDir)
-)</PostBuildEvent>
+    <PostBuildEvent>PowerShell -ExecutionPolicy Unrestricted -NoProfile -NonInteractive -File "$(SolutionDir)scripts\postbuild_cleanup.ps1" -TargetDir $(TargetDir)</PostBuildEvent>
   </PropertyGroup>
 </Project>

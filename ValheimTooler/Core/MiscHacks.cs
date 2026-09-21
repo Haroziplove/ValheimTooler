@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using RapidGUI;
 using UnityEngine;
 using ValheimTooler.Core.Extensions;
+using ValheimTooler.Models.Mono;
 using ValheimTooler.Utils;
 
 namespace ValheimTooler.Core
@@ -35,6 +36,10 @@ namespace ValheimTooler.Core
             if (Time.time >= s_updateTimer)
             {
                 s_players = Player.GetAllPlayers();
+                if (s_enableAutopinMap)
+                {
+                    PinNearbyDeposits();
+                }
 
                 s_updateTimer = Time.time + s_updateTimerInterval;
             }
@@ -67,24 +72,23 @@ namespace ValheimTooler.Core
             {
                 GUILayout.BeginVertical();
                 {
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_misc_damage_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                    UI.Controls.BeginSection("$vt_misc_damage_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_damage_player :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_misc_damage_player");
                             s_playerDamageIdx = RGUI.SelectionPopup(s_playerDamageIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
                         }
                         GUILayout.EndHorizontal();
 
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_damage_value :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_misc_damage_value");
                             s_damageToDeal = GUILayout.TextField(s_damageToDeal, GUILayout.ExpandWidth(true));
                         }
                         GUILayout.EndHorizontal();
 
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_misc_damage_button_player")))
+                        if (UI.Controls.ActionButton("$vt_misc_damage_button_player", FeatureMethod.Direct))
                         {
 
                             if (int.TryParse(s_damageToDeal, out int damage))
@@ -92,34 +96,55 @@ namespace ValheimTooler.Core
                                 s_players[s_playerDamageIdx].VTDamage(damage);
                             }
                         }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_misc_damage_button_entities")))
+                        if (UI.Controls.ActionButton("$vt_misc_damage_button_entities", FeatureMethod.Direct))
                         {
                             DamageAllCharacters();
                         }
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_misc_damage_button_players")))
+                        if (UI.Controls.ActionButton("$vt_misc_damage_button_radius", FeatureMethod.Direct))
+                        {
+                            DamageCharactersInRadius(ConfigManager.s_killRadius.Value);
+                        }
+                        ConfigManager.s_killRadius.Value = UI.Controls.LabeledSlider(
+                            "$vt_misc_damage_radius",
+                            ConfigManager.s_killRadius.Value,
+                            1f,
+                            80f,
+                            ConfigManager.s_killRadius.Value.ToString("0.0") + "m",
+                            "$vt_misc_damage_radius");
+                        if (UI.Controls.ActionButton("$vt_misc_damage_button_players", FeatureMethod.Direct))
                         {
                             DamageAllOtherPlayers();
                         }
                     }
-                    GUILayout.EndVertical();
+                    UI.Controls.EndSection();
 
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_misc_map_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                    UI.Controls.BeginSection("$vt_misc_map_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
+                        if (UI.Controls.ActionButton("$vt_misc_clear_deaths", FeatureMethod.Direct))
+                        {
+                            ClearDeathMarkers();
+                        }
 
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_misc_autopin", s_enableAutopinMap)))
+                        if (UI.Controls.FeatureButton("$vt_misc_autopin", s_enableAutopinMap, FeatureMethod.Direct))
                         {
                             s_enableAutopinMap = !s_enableAutopinMap;
+                            if (s_enableAutopinMap)
+                            {
+                                PinNearbyDeposits();
+                            }
                         }
 
-                        GUILayout.BeginHorizontal();
-                        {
-                            ConfigManager.s_permanentPins.Value = GUILayout.Toggle(ConfigManager.s_permanentPins.Value, "");
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_autopin_permanent"));
-                        }
-                        GUILayout.EndHorizontal();
+                        ConfigManager.s_autopinRadius.Value = UI.Controls.LabeledSlider(
+                            "$vt_misc_autopin_radius",
+                            ConfigManager.s_autopinRadius.Value,
+                            5f,
+                            200f,
+                            ConfigManager.s_autopinRadius.Value.ToString("0.0") + "m",
+                            "$vt_misc_autopin_radius");
 
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_misc_autopin_clear")))
+                        ConfigManager.s_permanentPins.Value = UI.Controls.LabeledToggle("$vt_misc_autopin_permanent", ConfigManager.s_permanentPins.Value);
+
+                        if (UI.Controls.ActionButton("$vt_misc_autopin_clear", FeatureMethod.Direct))
                         {
                             if (Minimap.instance != null)
                             {
@@ -133,43 +158,68 @@ namespace ValheimTooler.Core
                                 }
                             }
                         }
-                    }
-                    GUILayout.EndVertical();
 
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_misc_event_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                        ConfigManager.s_cheatMinimapIndicators.Value = UI.Controls.LabeledToggle("$vt_misc_cheat_indicators", ConfigManager.s_cheatMinimapIndicators.Value);
+
+                        UI.Controls.Hint("$vt_player_minimap_hint");
+                        if (UI.Controls.ActionButton("$vt_player_explore_minimap", FeatureMethod.Direct))
+                        {
+                            UI.Controls.AskConfirm("$vt_player_explore_minimap", "$vt_player_explore_minimap_confirm", () =>
+                            {
+                                if (Minimap.instance != null)
+                                {
+                                    Minimap.instance.VTExploreAll();
+                                }
+                            });
+                        }
+                        if (UI.Controls.ActionButton("$vt_player_reset_minimap", FeatureMethod.Direct))
+                        {
+                            UI.Controls.AskConfirm("$vt_player_reset_minimap", "$vt_player_reset_minimap_confirm", () =>
+                            {
+                                if (Minimap.instance != null)
+                                {
+                                    Minimap.instance.VTReset();
+                                }
+                            });
+                        }
+                    }
+                    UI.Controls.EndSection();
+
+                    UI.Controls.BeginSection("$vt_misc_event_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_event_message :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_misc_event_message");
                             s_worldMessageText = GUILayout.TextField(s_worldMessageText, GUILayout.ExpandWidth(true));
                         }
                         GUILayout.EndHorizontal();
 
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_misc_event_button")))
+                        if (UI.Controls.ActionButton("$vt_misc_event_button", FeatureMethod.Direct))
                         {
-                            MessageAllInRange(MessageHud.MessageType.Center, s_worldMessageText);
+                            if (Player.m_localPlayer != null)
+                            {
+                                Player.m_localPlayer.VTSendMessage(s_worldMessageText);
+                            }
                         }
                     }
-                    GUILayout.EndVertical();
+                    UI.Controls.EndSection();
                 }
                 GUILayout.EndVertical();
 
                 GUILayout.BeginVertical();
                 {
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_misc_chat_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                    UI.Controls.BeginSection("$vt_misc_chat_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_chat_username :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_misc_chat_username");
                             s_chatUsernameText = GUILayout.TextField(s_chatUsernameText, GUILayout.ExpandWidth(true));
                         }
                         GUILayout.EndHorizontal();
 
                         GUILayout.BeginHorizontal();
                         {
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_chat_message :"), GUILayout.ExpandWidth(false));
+                            UI.Controls.FieldLabel("$vt_misc_chat_message");
                             s_chatMessageText = GUILayout.TextField(s_chatMessageText, GUILayout.ExpandWidth(true));
                         }
                         GUILayout.EndHorizontal();
@@ -177,57 +227,50 @@ namespace ValheimTooler.Core
                         GUILayout.BeginHorizontal();
                         {
                             s_isShoutMessage = GUILayout.Toggle(s_isShoutMessage, "");
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_chat_shout"));
+                            UI.Controls.HoverLabel("$vt_misc_chat_shout");
                         }
                         GUILayout.EndHorizontal();
 
-                        if (GUILayout.Button(VTLocalization.instance.Localize("$vt_misc_chat_button")))
+                        if (UI.Controls.ActionButton("$vt_misc_chat_button", FeatureMethod.Direct))
                         {
                             ChatMessage(s_isShoutMessage ? Talker.Type.Shout : Talker.Type.Normal, s_chatUsernameText, s_chatMessageText);
                         }
                     }
-                    GUILayout.EndVertical();
+                    UI.Controls.EndSection();
 
-                    GUILayout.BeginVertical(VTLocalization.instance.Localize("$vt_misc_esp_title"), GUI.skin.box, GUILayout.ExpandWidth(false));
+                    UI.Controls.BeginSection("$vt_misc_esp_title");
                     {
-                        GUILayout.Space(EntryPoint.s_boxSpacing);
 
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_misc_player_esp_button", ESP.s_showPlayerESP, ConfigManager.s_espPlayersShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_misc_player_esp_button", ESP.s_showPlayerESP, FeatureMethod.Direct, ConfigManager.s_espPlayersShortcut.Value))
                         {
                             ActionToggleESPPlayers();
                         }
 
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_misc_monster_esp_button", ESP.s_showMonsterESP, ConfigManager.s_espMonstersShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_misc_monster_esp_button", ESP.s_showMonsterESP, FeatureMethod.Direct, ConfigManager.s_espMonstersShortcut.Value))
                         {
                             ActionToggleESPMonsters();
                         }
 
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_misc_dropped_esp_button", ESP.s_showDroppedESP, ConfigManager.s_espDroppedItemsShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_misc_dropped_esp_button", ESP.s_showDroppedESP, FeatureMethod.Direct, ConfigManager.s_espDroppedItemsShortcut.Value))
                         {
                             ActionToggleESPDroppedItems();
                         }
 
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_misc_deposit_esp_button", ESP.s_showDepositESP, ConfigManager.s_espDepositsShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_misc_deposit_esp_button", ESP.s_showDepositESP, FeatureMethod.Direct, ConfigManager.s_espDepositsShortcut.Value))
                         {
                             ActionToggleESPDeposits();
                         }
 
-                        if (GUILayout.Button(UI.Utils.ToggleButtonLabel("$vt_misc_pickable_esp_button", ESP.s_showPickableESP, ConfigManager.s_espPickablesShortcut.Value)))
+                        if (UI.Controls.FeatureButton("$vt_misc_pickable_esp_button", ESP.s_showPickableESP, FeatureMethod.Direct, ConfigManager.s_espPickablesShortcut.Value))
                         {
                             ActionToggleESPPickables();
                         }
 
-                        GUILayout.Label("ESP Radius distance (" + ConfigManager.s_espRadius.Value.ToString("0.0") + "m)", GUILayout.MinWidth(200));
-                        ConfigManager.s_espRadius.Value = GUILayout.HorizontalSlider(ConfigManager.s_espRadius.Value, 5f, 500f, GUILayout.ExpandWidth(true));
-
-                        GUILayout.BeginHorizontal();
-                        {
-                            ConfigManager.s_espRadiusEnabled.Value = GUILayout.Toggle(ConfigManager.s_espRadiusEnabled.Value, "");
-                            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_radius_enable"));
-                        }
-                        GUILayout.EndHorizontal();
+                        ConfigManager.s_espRadius.Value = UI.Controls.LabeledSlider("$vt_misc_esp_radius", ConfigManager.s_espRadius.Value, 5f, 500f, ConfigManager.s_espRadius.Value.ToString("0.0") + "m", "$vt_misc_esp_radius");
+                        ConfigManager.s_espRadiusEnabled.Value = UI.Controls.LabeledToggle("$vt_misc_radius_enable", ConfigManager.s_espRadiusEnabled.Value);
+                        UI.Controls.NoteHoverAction("$vt_misc_radius_enable");
                     }
-                    GUILayout.EndVertical();
+                    UI.Controls.EndSection();
                 }
                 GUILayout.EndVertical();
             }
@@ -286,14 +329,107 @@ namespace ValheimTooler.Core
 
         private static void DamageAllCharacters()
         {
+            DamageCharactersInRadius(-1f);
+        }
+
+        private static void DamageCharactersInRadius(float radius)
+        {
+            if (radius >= 0f && Player.m_localPlayer == null)
+            {
+                return;
+            }
+
+            Vector3 origin = Player.m_localPlayer != null ? Player.m_localPlayer.transform.position : Vector3.zero;
             foreach (Character character in Character.GetAllCharacters())
             {
-                if (!character.IsPlayer())
+                if (character == null || character.IsPlayer())
                 {
-                    character.VTDamage(1E+10f);
+                    continue;
                 }
+
+                if (radius >= 0f && global::Utils.DistanceXZ(origin, character.transform.position) > radius)
+                {
+                    continue;
+                }
+
+                character.VTDamage(1E+10f);
             }
         }
+
+        public static void TryPinDeposit(Destructible destructible)
+        {
+            if (!s_enableAutopinMap || destructible == null || Player.m_localPlayer == null || Minimap.instance == null)
+            {
+                return;
+            }
+
+            if (destructible.GetComponent<PinnedObject>() != null)
+            {
+                return;
+            }
+
+            HoverText component = destructible.GetComponent<HoverText>();
+            if (component == null)
+            {
+                return;
+            }
+
+            string text = component.m_text != null ? component.m_text.ToLower() : "";
+            if (!text.Contains("deposit") && !text.Contains("piece_mudpile"))
+            {
+                return;
+            }
+
+            float radius = ConfigManager.s_autopinRadius != null ? ConfigManager.s_autopinRadius.Value : 80f;
+            if (global::Utils.DistanceXZ(Player.m_localPlayer.transform.position, destructible.transform.position) > radius)
+            {
+                return;
+            }
+
+            string random_nounce = new string(Enumerable.Repeat("0123456789", 5).Select(s => s[s_random.Next(s.Length)]).ToArray());
+            string name = component.GetHoverName() + " [VT" + random_nounce + "]";
+            destructible.gameObject.AddComponent<PinnedObject>().Init(name);
+        }
+
+        private static void PinNearbyDeposits()
+        {
+            Destructible[] destructibles = UnityEngine.Object.FindObjectsOfType<Destructible>();
+            if (destructibles == null)
+            {
+                return;
+            }
+
+            foreach (Destructible destructible in destructibles)
+            {
+                TryPinDeposit(destructible);
+            }
+        }
+
+        private static void ClearDeathMarkers()
+        {
+            if (Minimap.instance == null)
+            {
+                return;
+            }
+
+            var pins = new List<Minimap.PinData>(Minimap.instance.GetFieldValue<List<Minimap.PinData>>("m_pins"));
+            int removed = 0;
+            foreach (Minimap.PinData pin in pins)
+            {
+                if (pin != null && pin.m_type == Minimap.PinType.Death)
+                {
+                    Minimap.instance.RemovePin(pin);
+                    removed++;
+                }
+            }
+
+            if (Player.m_localPlayer != null)
+            {
+                Player.m_localPlayer.VTSendMessage(VTLocalization.instance.Localize("$vt_misc_clear_deaths_done") + " " + removed);
+            }
+        }
+
+        private static readonly System.Random s_random = new System.Random();
 
         private static void DamageAllOtherPlayers()
         {
@@ -308,14 +444,6 @@ namespace ValheimTooler.Core
                 {
                     character.VTDamage(1E+10f);
                 }
-            }
-        }
-
-        private static void MessageAllInRange(MessageHud.MessageType type, string msg)
-        {
-            foreach (Player player in Player.GetAllPlayers())
-            {
-                player.Message(type, msg, 0, null);
             }
         }
 

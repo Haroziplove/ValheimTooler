@@ -20,6 +20,7 @@ namespace ValheimTooler.Core
         private static readonly Color s_tamedMonstersColor = new Color(1, 0.3f, 0, 1); // Orange
         private static readonly Color s_pickablesColor = new Color(0.13f, 0.58f, 0.89f, 1); // Light blue
         private static readonly Color s_dropsColor = new Color(0.13f, 0.72f, 0.11f, 1); // Light green
+        private static readonly Color s_cheatedDropsColor = new Color(1f, 0.45f, 0.12f, 1f);
         private static readonly Color s_depositsColor = Color.yellow;
 
         private static readonly List<Character> s_characters = new List<Character>();
@@ -116,14 +117,12 @@ namespace ValheimTooler.Core
                     {
                         foreach (Character character in characters)
                         {
-                            var distance = Vector3.Distance(mainCamera.transform.position, character.transform.position);
-
                             if (character.IsPlayer() && ((Player)character).GetPlayerID() == Player.m_localPlayer.GetPlayerID())
                             {
                                 continue;
                             }
 
-                            if (distance > 2 && (!ConfigManager.s_espRadiusEnabled.Value || distance < ConfigManager.s_espRadius.Value))
+                            if (InEspRadius(character.transform.position))
                             {
                                 s_characters.Add(character);
                             }
@@ -139,9 +138,7 @@ namespace ValheimTooler.Core
                     {
                         foreach (Pickable pickable in pickables)
                         {
-                            var distance = Vector3.Distance(mainCamera.transform.position, pickable.transform.position);
-
-                            if (distance > 2 && (!ConfigManager.s_espRadiusEnabled.Value || distance < ConfigManager.s_espRadius.Value))
+                            if (InEspRadius(pickable.transform.position))
                             {
                                 s_pickables.Add(pickable);
                             }
@@ -154,9 +151,7 @@ namespace ValheimTooler.Core
                     {
                         foreach (PickableItem pickableItem in pickableItems)
                         {
-                            var distance = Vector3.Distance(mainCamera.transform.position, pickableItem.transform.position);
-
-                            if (distance > 2 && (!ConfigManager.s_espRadiusEnabled.Value || distance < ConfigManager.s_espRadius.Value))
+                            if (InEspRadius(pickableItem.transform.position))
                             {
                                 s_pickableItems.Add(pickableItem);
                             }
@@ -172,9 +167,7 @@ namespace ValheimTooler.Core
                     {
                         foreach (ItemDrop itemDrop in itemDrops)
                         {
-                            var distance = Vector3.Distance(mainCamera.transform.position, itemDrop.transform.position);
-
-                            if (distance > 2 && (!ConfigManager.s_espRadiusEnabled.Value || distance < ConfigManager.s_espRadius.Value))
+                            if (InEspRadius(itemDrop.transform.position))
                             {
                                 s_drops.Add(itemDrop);
                             }
@@ -195,9 +188,7 @@ namespace ValheimTooler.Core
                             if (name.Contains("rock") || name.Length == 0)
                                 continue;
 
-                            var distance = Vector3.Distance(mainCamera.transform.position, mineRock5.transform.position);
-
-                            if (distance > 2 && (!ConfigManager.s_espRadiusEnabled.Value || distance < ConfigManager.s_espRadius.Value))
+                            if (InEspRadius(mineRock5.transform.position))
                             {
                                 s_mineRock5s.Add(mineRock5);
                             }
@@ -220,9 +211,7 @@ namespace ValheimTooler.Core
                                 continue;
                             }
 
-                            var distance = Vector3.Distance(mainCamera.transform.position, destructible.transform.position);
-
-                            if (distance > 2 && (!ConfigManager.s_espRadiusEnabled.Value || distance < ConfigManager.s_espRadius.Value))
+                            if (InEspRadius(destructible.transform.position))
                             {
                                 s_depositsDestructible.Add(destructible);
                             }
@@ -234,8 +223,29 @@ namespace ValheimTooler.Core
             }
         }
 
+        private static bool InEspRadius(Vector3 worldPos)
+        {
+            if (Player.m_localPlayer == null)
+            {
+                return false;
+            }
+
+            float distance = global::Utils.DistanceXZ(Player.m_localPlayer.transform.position, worldPos);
+            if (distance <= 2f)
+            {
+                return false;
+            }
+
+            return !ConfigManager.s_espRadiusEnabled.Value || distance <= ConfigManager.s_espRadius.Value;
+        }
+
         public static void DisplayGUI()
         {
+            if (Minimap.IsOpen())
+            {
+                return;
+            }
+
             Camera mainCamera = global::Utils.GetMainCamera();
 
             if (mainCamera != null && Player.m_localPlayer != null)
@@ -312,7 +322,6 @@ namespace ValheimTooler.Core
 
                 if (ESP.s_showDroppedESP)
                 {
-                    labelSkin.normal.textColor = s_dropsColor;
                     foreach (ItemDrop itemDrop in s_drops)
                     {
                         if (itemDrop == null)
@@ -323,9 +332,13 @@ namespace ValheimTooler.Core
 
                         if (vector.z > -1)
                         {
-                            string espLabel = $"{Localization.instance.Localize(itemDrop.GetHoverName())} [{(int)vector.z}]";
+                            bool cheated = itemDrop.m_itemData != null && itemDrop.m_itemData.m_cheated;
+                            labelSkin.normal.textColor = cheated ? s_cheatedDropsColor : s_dropsColor;
+                            string name = Localization.instance.Localize(itemDrop.GetHoverName());
+                            string flag = cheated ? " [" + VTLocalization.instance.Localize("$vt_esp_cheated") + "]" : "";
+                            string espLabel = $"{name}{flag} [{(int)vector.z}]";
 
-                            GUI.Label(new Rect((int)vector.x - 5, Screen.height - vector.y - 5, 150, 40), espLabel, labelSkin);
+                            GUI.Label(new Rect((int)vector.x - 5, Screen.height - vector.y - 5, 220, 40), espLabel, labelSkin);
                         }
                     }
                 }
