@@ -1,12 +1,14 @@
 # Valheim Tooler
 
-A BepInEx window for running a Valheim world from inside the game. Version 2.0.1.1 works with Valheim 1.0.15, the current game release.
+A BepInEx window for running a Valheim world from inside the game. Version 2.0.5.0 works with Valheim 1.0.15, the current game release.
 
 ## Hotkeys
 
 **Delete** shows or hides the window. The window can also start open, depending on your settings file.
 
 **End** only works while the window is on screen. It leaves the window visible and gives mouse control back to the game, so you can walk, fight, and use menus without the tool taking the click. Press End again to make the window clickable. If you hide the window with Delete, End does nothing until you show the window again. Hiding the window does not change whether End is on or off.
+
+**Home** shows or hides a comfort reference table. The table lists every comfort item in the game and how much comfort it gives, grouped by category. Rows you already have nearby are highlighted, so an empty category is one you are missing. The table ignores clicks while the tool is hidden. While the tool is open you can drag the table by its title bar. **+** and **−** next to Comfort table size, on the Misc tab, make that table larger or smaller.
 
 **+** and **−** in the top-right of the window make the whole tool larger or smaller. The size is remembered.
 
