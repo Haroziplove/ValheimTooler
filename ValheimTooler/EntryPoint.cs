@@ -90,6 +90,11 @@ namespace ValheimTooler
                 TogglePassThrough();
             }
 
+            if (Input.GetKeyDown(KeyCode.Home))
+            {
+                ComfortTable.Toggle();
+            }
+
             ApplyMouseCapture();
 
             PlayerHacks.Update();
@@ -146,6 +151,7 @@ namespace ValheimTooler
 
             ESP.DisplayGUI();
             ComfortEsp.Draw();
+            ComfortTable.Draw();
             EspRadiusMap.Draw();
             CheatStatus.DrawHudIndicators();
             if (!s_passThroughInput)
@@ -374,6 +380,12 @@ namespace ValheimTooler
             if (!IsToolInteractive())
             {
                 return false;
+            }
+
+            Vector2 screenMouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+            if (s_showMainWindow && ComfortTable.Visible && ComfortTable.ScreenRect.Contains(screenMouse))
+            {
+                return true;
             }
 
             float scale = ConfigManager.UiScale;

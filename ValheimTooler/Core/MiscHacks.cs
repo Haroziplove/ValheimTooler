@@ -259,6 +259,17 @@ namespace ValheimTooler.Core
 
                         ConfigManager.s_espRadiusEnabled.Value = UI.Controls.LabeledToggle("$vt_misc_radius_enable", ConfigManager.s_espRadiusEnabled.Value, true);
                         ConfigManager.s_comfortEsp.Value = UI.Controls.LabeledToggle("$vt_comfort_esp", ConfigManager.s_comfortEsp.Value);
+                        GUILayout.BeginHorizontal();
+                        if (GUILayout.Button("-", GUILayout.Width(28), GUILayout.Height(28)))
+                        {
+                            ComfortTable.AdjustScale(-0.1f);
+                        }
+                        if (GUILayout.Button("+", GUILayout.Width(28), GUILayout.Height(28)))
+                        {
+                            ComfortTable.AdjustScale(0.1f);
+                        }
+                        UI.Controls.HoverLabel("$vt_comfort_table_size");
+                        GUILayout.EndHorizontal();
                         UI.Controls.NoteHoverAction("$vt_misc_radius_enable");
                     }
                     UI.Controls.EndSection();

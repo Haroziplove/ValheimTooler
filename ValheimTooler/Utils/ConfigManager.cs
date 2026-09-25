@@ -49,6 +49,8 @@ namespace ValheimTooler.Utils
         public static ConfigEntry<float> s_uiScale;
         public static ConfigEntry<bool> s_cheatMinimapIndicators;
         public static ConfigEntry<bool> s_comfortEsp;
+        public static ConfigEntry<float> s_comfortTableScale;
+        public static ConfigEntry<Vector2> s_comfortTablePosition;
 
         public static float ActionRadius
         {
@@ -126,6 +128,8 @@ namespace ValheimTooler.Utils
             s_uiScale = s_internalFile.Bind("Internal", "UiScale", 1f);
             s_cheatMinimapIndicators = s_internalFile.Bind("Internal", "CheatMinimapIndicators", true);
             s_comfortEsp = s_internalFile.Bind("Internal", "ComfortEsp", false);
+            s_comfortTableScale = s_internalFile.Bind("Internal", "ComfortTableScale", 1f);
+            s_comfortTablePosition = s_internalFile.Bind("Internal", "ComfortTablePosition", new Vector2(40f, 80f));
 
             s_settingsFile.OrphanedEntries.Clear();
             s_internalFile.OrphanedEntries.Clear();
