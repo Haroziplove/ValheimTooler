@@ -367,7 +367,6 @@ namespace ValheimTooler.Core
                                 }
                             }
                         }
-                        // Deactivated because of mod conflict. See https://github.com/Astropilot/ValheimTooler/issues/45
                         //GUILayout.BeginHorizontal();
                         //{
                         //    var maxInteract = Player.m_localPlayer != null ? Player.m_localPlayer.m_maxInteractDistance : 5f;

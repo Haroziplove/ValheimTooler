@@ -12,7 +12,7 @@ namespace ValheimToolerMod
     [BepInProcess("valheim.exe")]
     public class ValheimToolerMod : BaseUnityPlugin
     {
-        const string PluginGUID = "com.github.Astropilot.ValheimTooler";
+        const string PluginGUID = "com.github.Haroziplove.ValheimTooler";
         const string PluginName = "ValheimTooler";
         const string PluginVersion = "2.0.1.1";
 
