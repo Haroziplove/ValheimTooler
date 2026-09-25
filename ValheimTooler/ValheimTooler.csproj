@@ -158,6 +158,7 @@
     <Compile Include="Core\FeatureMethod.cs" />
     <Compile Include="Core\CheatStatus.cs" />
     <Compile Include="Core\ComfortEsp.cs" />
+    <Compile Include="Core\ComfortTable.cs" />
     <Compile Include="Core\InventoryCleaner.cs" />
     <Compile Include="Core\Extensions\CharacterExtensions.cs" />
     <Compile Include="Core\Extensions\MinimapExtensions.cs" />
