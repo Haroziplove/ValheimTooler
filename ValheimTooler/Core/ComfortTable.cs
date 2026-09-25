@@ -195,7 +195,7 @@ namespace ValheimTooler.Core
                 }
 
                 Piece piece = prefab.GetComponent<Piece>();
-                if (piece == null || piece.m_comfort <= 0 || string.IsNullOrEmpty(piece.m_name))
+                if (piece == null || piece.m_comfort <= 0 || string.IsNullOrEmpty(piece.m_name) || !GivesComfort(prefab, piece))
                 {
                     continue;
                 }
@@ -224,6 +224,28 @@ namespace ValheimTooler.Core
             {
                 s_rect.position = ConfigManager.s_comfortTablePosition.Value;
             }
+        }
+
+        private static bool GivesComfort(GameObject prefab, Piece piece)
+        {
+            if (piece.m_category == Piece.PieceCategory.Food
+                || piece.m_category == Piece.PieceCategory.Meads
+                || piece.m_category == Piece.PieceCategory.Feasts)
+            {
+                return false;
+            }
+
+            ItemDrop drop = prefab.GetComponent<ItemDrop>();
+            if (drop != null && drop.m_itemData != null && drop.m_itemData.m_shared != null)
+            {
+                ItemDrop.ItemData.ItemType itemType = drop.m_itemData.m_shared.m_itemType;
+                if (itemType == ItemDrop.ItemData.ItemType.Consumable)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static string MatchKey(string name)
