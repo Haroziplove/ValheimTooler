@@ -18,9 +18,13 @@ namespace ValheimTooler.Core
         private static readonly HashSet<string> s_ownedItems = new HashSet<string>();
         private static readonly HashSet<int> s_ownedGroups = new HashSet<int>();
         private static GUIStyle s_header;
+        private static GUIStyle s_category;
         private static GUIStyle s_cell;
+        private static GUIStyle s_value;
         private static GUIStyle s_owned;
+        private static GUIStyle s_ownedValue;
         private static Texture2D s_ownedTex;
+        private static Texture2D s_lineTex;
         private static float s_ownedScan;
 
         public static Rect ScreenRect
@@ -80,23 +84,41 @@ namespace ValheimTooler.Core
             }
 
             GUI.Box(s_rect, GUIContent.none);
-            GUI.Label(new Rect(s_rect.x + 10f, s_rect.y + 6f, s_rect.width - 20f, 24f), VTLocalization.instance.Localize("$vt_comfort_table_title"), s_header);
+            float titleWidth = toolVisible ? s_rect.width - 78f : s_rect.width - 20f;
+            GUI.Label(new Rect(s_rect.x + 10f, s_rect.y + 6f, titleWidth, 24f), VTLocalization.instance.Localize("$vt_comfort_table_title"), s_header);
+            if (toolVisible)
+            {
+                DrawScaleButtons();
+            }
 
-            Rect view = new Rect(s_rect.x + 8f, s_rect.y + 34f, s_rect.width - 16f, s_rect.height - 44f);
-            float rowHeight = 22f;
+            Rect view = new Rect(s_rect.x + 8f, s_rect.y + 36f, s_rect.width - 16f, s_rect.height - 46f);
+            const float rowHeight = 24f;
+            const float valueWidth = 52f;
             float contentHeight = s_rows.Count * rowHeight;
             s_scroll = GUI.BeginScrollView(view, s_scroll, new Rect(0f, 0f, view.width - 18f, contentHeight));
+            float lineWidth = view.width - 18f;
             for (int i = 0; i < s_rows.Count; i++)
             {
                 Row row = s_rows[i];
-                Rect line = new Rect(0f, i * rowHeight, view.width - 18f, rowHeight);
+                Rect line = new Rect(0f, i * rowHeight, lineWidth, rowHeight);
                 bool owned = row.header ? s_ownedGroups.Contains(row.group) : s_ownedItems.Contains(row.key);
                 if (owned)
                 {
                     GUI.DrawTexture(line, s_ownedTex, ScaleMode.StretchToFill);
                 }
 
-                GUI.Label(line, row.text, owned ? s_owned : s_cell);
+                if (row.header)
+                {
+                    GUI.Label(new Rect(line.x + 6f, line.y, line.width - 12f, line.height), row.text, s_category);
+                }
+                else
+                {
+                    GUI.Label(new Rect(line.x + 8f, line.y, line.width - valueWidth - 16f, line.height), row.text, owned ? s_owned : s_cell);
+                    GUI.Label(new Rect(line.x + line.width - valueWidth - 8f, line.y, valueWidth, line.height), "+" + row.comfort, owned ? s_ownedValue : s_value);
+                    GUI.DrawTexture(new Rect(line.x + line.width - valueWidth - 10f, line.y + 3f, 1f, line.height - 6f), s_lineTex);
+                }
+
+                GUI.DrawTexture(new Rect(line.x, line.yMax - 1f, line.width, 1f), s_lineTex);
             }
 
             GUI.EndScrollView();
@@ -115,7 +137,7 @@ namespace ValheimTooler.Core
                 return;
             }
 
-            Rect bar = new Rect(s_rect.x, s_rect.y, s_rect.width, 32f);
+            Rect bar = new Rect(s_rect.x, s_rect.y, Mathf.Max(40f, s_rect.width - 70f), 32f);
             Vector2 mouse = ev.mousePosition;
             if (ev.type == EventType.MouseDown && ev.button == 0 && bar.Contains(mouse))
             {
@@ -167,7 +189,7 @@ namespace ValheimTooler.Core
                     group = (int)piece.m_comfortGroup,
                     key = piece.m_name,
                     comfort = piece.m_comfort,
-                    text = "    " + display + "    +" + piece.m_comfort
+                    text = display
                 });
             }
 
@@ -194,7 +216,7 @@ namespace ValheimTooler.Core
                         header = true,
                         group = row.group,
                         key = "group:" + row.group,
-                        text = GroupName(row.group)
+                        text = GroupName(row.group).ToUpperInvariant()
                     });
                     lastGroup = row.group;
                 }
@@ -299,23 +321,60 @@ namespace ValheimTooler.Core
                 alignment = TextAnchor.MiddleLeft
             };
             s_header.normal.textColor = new Color(0.85f, 0.95f, 1f, 1f);
-            s_cell = new GUIStyle(GUI.skin.label)
+            s_category = new GUIStyle(GUI.skin.label)
             {
+                fontStyle = FontStyle.Bold,
                 fontSize = 14,
                 alignment = TextAnchor.MiddleLeft
             };
+            s_category.normal.textColor = new Color(0.9f, 0.95f, 1f, 1f);
+            s_cell = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 14,
+                alignment = TextAnchor.MiddleLeft,
+                clipping = TextClipping.Clip
+            };
             s_cell.normal.textColor = Color.white;
+            s_value = new GUIStyle(s_cell)
+            {
+                alignment = TextAnchor.MiddleRight
+            };
             s_owned = new GUIStyle(s_cell)
             {
                 fontStyle = FontStyle.Bold
             };
             s_owned.normal.textColor = new Color(0.15f, 0.12f, 0.02f, 1f);
+            s_ownedValue = new GUIStyle(s_owned)
+            {
+                alignment = TextAnchor.MiddleRight
+            };
             s_ownedTex = new Texture2D(1, 1, TextureFormat.ARGB32, false)
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
             s_ownedTex.SetPixel(0, 0, new Color(0.95f, 0.78f, 0.25f, 0.95f));
             s_ownedTex.Apply();
+            s_lineTex = new Texture2D(1, 1, TextureFormat.ARGB32, false)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            s_lineTex.SetPixel(0, 0, new Color(1f, 1f, 1f, 0.16f));
+            s_lineTex.Apply();
+        }
+
+        private static void DrawScaleButtons()
+        {
+            GUIStyle style = GUI.skin.button;
+            Rect minus = new Rect(s_rect.xMax - 64f, s_rect.y + 5f, 26f, 22f);
+            Rect plus = new Rect(s_rect.xMax - 34f, s_rect.y + 5f, 26f, 22f);
+            if (GUI.Button(minus, "-", style))
+            {
+                AdjustScale(-0.1f);
+            }
+            if (GUI.Button(plus, "+", style))
+            {
+                AdjustScale(0.1f);
+            }
         }
 
         private class Row
