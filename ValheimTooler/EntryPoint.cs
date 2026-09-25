@@ -95,6 +95,8 @@ namespace ValheimTooler
                 ComfortTable.Toggle();
             }
 
+            ComfortTable.ScrollWhenHidden();
+
             ApplyMouseCapture();
 
             PlayerHacks.Update();

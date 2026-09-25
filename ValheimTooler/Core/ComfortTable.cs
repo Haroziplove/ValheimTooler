@@ -25,6 +25,8 @@ namespace ValheimTooler.Core
         private static GUIStyle s_ownedValue;
         private static Texture2D s_ownedTex;
         private static Texture2D s_lineTex;
+        private static float s_viewHeight = 440f;
+        private static float s_maxScroll;
         private static float s_ownedScan;
 
         public static Rect ScreenRect
@@ -49,6 +51,24 @@ namespace ValheimTooler.Core
             }
 
             ConfigManager.s_comfortTableScale.Value = Mathf.Clamp(ConfigManager.s_comfortTableScale.Value + delta, 0.6f, 1.8f);
+        }
+
+        public static void ScrollWhenHidden()
+        {
+            if (!Visible || EntryPoint.s_showMainWindow)
+            {
+                return;
+            }
+
+            float page = Mathf.Max(48f, s_viewHeight - 24f);
+            if (Input.GetKeyDown(KeyCode.PageDown))
+            {
+                s_scroll.y = Mathf.Min(s_maxScroll, s_scroll.y + page);
+            }
+            else if (Input.GetKeyDown(KeyCode.PageUp))
+            {
+                s_scroll.y = Mathf.Max(0f, s_scroll.y - page);
+            }
         }
 
         public static void Toggle()
@@ -92,9 +112,12 @@ namespace ValheimTooler.Core
             }
 
             Rect view = new Rect(s_rect.x + 8f, s_rect.y + 36f, s_rect.width - 16f, s_rect.height - 46f);
+            s_viewHeight = view.height;
             const float rowHeight = 24f;
             const float valueWidth = 52f;
             float contentHeight = s_rows.Count * rowHeight;
+            s_maxScroll = Mathf.Max(0f, contentHeight - view.height);
+            s_scroll.y = Mathf.Clamp(s_scroll.y, 0f, s_maxScroll);
             s_scroll = GUI.BeginScrollView(view, s_scroll, new Rect(0f, 0f, view.width - 18f, contentHeight));
             float lineWidth = view.width - 18f;
             for (int i = 0; i < s_rows.Count; i++)
@@ -109,7 +132,7 @@ namespace ValheimTooler.Core
 
                 if (row.header)
                 {
-                    GUI.Label(new Rect(line.x + 6f, line.y, line.width - 12f, line.height), row.text, s_category);
+                    GUI.Label(new Rect(line.x + 6f, line.y, line.width - 12f, line.height), row.text, owned ? s_owned : s_category);
                 }
                 else
                 {
@@ -182,7 +205,7 @@ namespace ValheimTooler.Core
                     continue;
                 }
 
-                string display = Localization.instance != null ? Localization.instance.Localize(piece.m_name) : piece.m_name;
+                string display = PieceName(piece);
                 s_rows.Add(new Row
                 {
                     header = false,
@@ -200,6 +223,91 @@ namespace ValheimTooler.Core
             {
                 s_rect.position = ConfigManager.s_comfortTablePosition.Value;
             }
+        }
+
+        private static string PieceName(Piece piece)
+        {
+            string raw = piece.m_name ?? "";
+            string stem = raw.StartsWith("$") ? raw.Substring(1) : raw;
+            string[] candidates = new string[]
+            {
+                raw,
+                "$" + stem,
+                "$" + TrimVariant(stem),
+                "$piece_" + TrimVariant(stem)
+            };
+
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                string candidate = candidates[i];
+                if (string.IsNullOrEmpty(candidate))
+                {
+                    continue;
+                }
+
+                if (!candidate.StartsWith("$"))
+                {
+                    candidate = "$" + candidate;
+                }
+
+                string localized = Localization.instance != null ? Localization.instance.Localize(candidate) : candidate;
+                if (!IsMissingName(localized))
+                {
+                    return localized;
+                }
+            }
+
+            return PrettyToken(TrimVariant(stem));
+        }
+
+        private static string TrimVariant(string stem)
+        {
+            string[] suffixes = new string[] { "_male", "_female", "_horizontal", "_vertical" };
+            for (int i = 0; i < suffixes.Length; i++)
+            {
+                if (stem.EndsWith(suffixes[i], System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return stem.Substring(0, stem.Length - suffixes[i].Length);
+                }
+            }
+
+            return stem;
+        }
+
+        private static bool IsMissingName(string value)
+        {
+            return string.IsNullOrEmpty(value) || (value.StartsWith("[") && value.EndsWith("]"));
+        }
+
+        private static string PrettyToken(string stem)
+        {
+            if (stem.StartsWith("piece_"))
+            {
+                stem = stem.Substring(6);
+            }
+
+            string[] parts = stem.Split('_');
+            var words = new System.Text.StringBuilder();
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i].Length == 0)
+                {
+                    continue;
+                }
+
+                if (words.Length > 0)
+                {
+                    words.Append(' ');
+                }
+
+                words.Append(char.ToUpperInvariant(parts[i][0]));
+                if (parts[i].Length > 1)
+                {
+                    words.Append(parts[i].Substring(1));
+                }
+            }
+
+            return words.Length > 0 ? words.ToString() : stem;
         }
 
         private static void InsertHeaders()
@@ -297,12 +405,12 @@ namespace ValheimTooler.Core
                 case 3: return VTLocalization.instance.Localize("$vt_comfort_group_banner");
                 case 4: return VTLocalization.instance.Localize("$vt_comfort_group_chair");
                 case 5: return VTLocalization.instance.Localize("$vt_comfort_group_table");
-                case 6: return VTLocalization.instance.Localize("$vt_comfort_group_carpet");
-                case 7: return VTLocalization.instance.Localize("$vt_comfort_group_display");
+                case 6: return VTLocalization.instance.Localize("$vt_comfort_group_rug");
+                case 7: return VTLocalization.instance.Localize("$vt_comfort_group_stands");
                 case 8: return VTLocalization.instance.Localize("$vt_comfort_group_decor");
-                case 9: return VTLocalization.instance.Localize("$vt_comfort_group_garland");
-                case 10: return VTLocalization.instance.Localize("$vt_comfort_group_lantern");
-                case 11: return VTLocalization.instance.Localize("$vt_comfort_group_leisure");
+                case 9: return VTLocalization.instance.Localize("$vt_comfort_group_plants");
+                case 10: return VTLocalization.instance.Localize("$vt_comfort_group_lights");
+                case 11: return VTLocalization.instance.Localize("$vt_comfort_group_bathroom");
                 default: return VTLocalization.instance.Localize("$vt_comfort_group_other");
             }
         }
@@ -352,7 +460,7 @@ namespace ValheimTooler.Core
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
-            s_ownedTex.SetPixel(0, 0, new Color(0.95f, 0.78f, 0.25f, 0.95f));
+            s_ownedTex.SetPixel(0, 0, new Color(0.95f, 0.78f, 0.25f, 0.72f));
             s_ownedTex.Apply();
             s_lineTex = new Texture2D(1, 1, TextureFormat.ARGB32, false)
             {
