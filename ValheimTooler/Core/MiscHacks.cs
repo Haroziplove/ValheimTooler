@@ -187,9 +187,9 @@ namespace ValheimTooler.Core
 
                         if (UI.Controls.ActionButton("$vt_misc_event_button", FeatureMethod.Direct))
                         {
-                            if (Player.m_localPlayer != null)
+                            if (MessageHud.instance != null && !string.IsNullOrEmpty(s_worldMessageText))
                             {
-                                Player.m_localPlayer.VTSendMessage(s_worldMessageText);
+                                MessageHud.instance.MessageAll(MessageHud.MessageType.Center, s_worldMessageText);
                             }
                         }
                     }
