@@ -124,7 +124,7 @@ namespace ValheimTooler.Core
             {
                 Row row = s_rows[i];
                 Rect line = new Rect(0f, i * rowHeight, lineWidth, rowHeight);
-                bool owned = row.header ? s_ownedGroups.Contains(row.group) : s_ownedItems.Contains(row.key);
+                bool owned = row.header ? s_ownedGroups.Contains(row.group) : s_ownedItems.Contains(row.match);
                 if (owned)
                 {
                     GUI.DrawTexture(line, s_ownedTex, ScaleMode.StretchToFill);
@@ -136,7 +136,7 @@ namespace ValheimTooler.Core
                 }
                 else
                 {
-                    GUI.Label(new Rect(line.x + 8f, line.y, line.width - valueWidth - 16f, line.height), row.text, owned ? s_owned : s_cell);
+                    GUI.Label(new Rect(line.x + 28f, line.y, line.width - valueWidth - 36f, line.height), row.text, owned ? s_owned : s_cell);
                     GUI.Label(new Rect(line.x + line.width - valueWidth - 8f, line.y, valueWidth, line.height), "+" + row.comfort, owned ? s_ownedValue : s_value);
                     GUI.DrawTexture(new Rect(line.x + line.width - valueWidth - 10f, line.y + 3f, 1f, line.height - 6f), s_lineTex);
                 }
@@ -211,6 +211,7 @@ namespace ValheimTooler.Core
                     header = false,
                     group = (int)piece.m_comfortGroup,
                     key = piece.m_name,
+                    match = MatchKey(piece.m_name),
                     comfort = piece.m_comfort,
                     text = display
                 });
@@ -223,6 +224,23 @@ namespace ValheimTooler.Core
             {
                 s_rect.position = ConfigManager.s_comfortTablePosition.Value;
             }
+        }
+
+        private static string MatchKey(string name)
+        {
+            string stem = name ?? "";
+            if (stem.StartsWith("$"))
+            {
+                stem = stem.Substring(1);
+            }
+
+            stem = TrimVariant(stem).ToLowerInvariant();
+            if (stem.StartsWith("piece_"))
+            {
+                stem = stem.Substring(6);
+            }
+
+            return stem;
         }
 
         private static string PieceName(Piece piece)
@@ -389,10 +407,9 @@ namespace ValheimTooler.Core
                 }
 
                 s_ownedGroups.Add((int)piece.m_comfortGroup);
-                if (!string.IsNullOrEmpty(piece.m_name))
-                {
-                    s_ownedItems.Add(piece.m_name);
-                }
+                s_ownedItems.Add(MatchKey(piece.m_name));
+                string prefab = piece.gameObject.name.Replace("(Clone)", "").Trim();
+                s_ownedItems.Add(MatchKey(prefab));
             }
         }
 
@@ -491,6 +508,7 @@ namespace ValheimTooler.Core
             public int group;
             public int comfort;
             public string key;
+            public string match;
             public string text;
         }
     }
