@@ -33,9 +33,13 @@ namespace ValheimTooler.UI
             GUILayout.EndVertical();
         }
 
-        public static bool FeatureButton(string labelCode, bool on, FeatureMethod method, KeyboardShortcut? shortcut = null)
+        public static bool FeatureButton(string labelCode, bool on, FeatureMethod method, KeyboardShortcut? shortcut = null, bool usesRadius = false)
         {
             GUILayout.BeginHorizontal();
+            if (usesRadius)
+            {
+                RadiusMark(28f);
+            }
             string tip = Tip(labelCode);
             bool clicked = GUILayout.Button(
                 new GUIContent(Utils.ToggleButtonLabel(labelCode, on, shortcut), tip),
@@ -54,9 +58,13 @@ namespace ValheimTooler.UI
             return clicked;
         }
 
-        public static bool ActionButton(string labelCode, FeatureMethod method, KeyboardShortcut? shortcut = null)
+        public static bool ActionButton(string labelCode, FeatureMethod method, KeyboardShortcut? shortcut = null, bool usesRadius = false)
         {
             GUILayout.BeginHorizontal();
+            if (usesRadius)
+            {
+                RadiusMark(28f);
+            }
             string tip = Tip(labelCode);
             bool clicked = GUILayout.Button(
                 new GUIContent(Utils.LabelWithShortcut(labelCode, shortcut), tip),
@@ -74,7 +82,7 @@ namespace ValheimTooler.UI
             return clicked;
         }
 
-        public static bool ActionButtonAt(Rect rect, string labelCode, FeatureMethod method)
+        public static bool ActionButtonAt(Rect rect, string labelCode, FeatureMethod method, string tipCode = null)
         {
             const float badgeWidth = 108f;
             const float gap = 4f;
@@ -82,7 +90,7 @@ namespace ValheimTooler.UI
             Rect buttonRect = new Rect(rect.x, rect.y, buttonWidth, rect.height);
             Rect badgeRect = new Rect(rect.x + buttonWidth + gap, rect.y, badgeWidth, rect.height);
 
-            string tip = Tip(labelCode);
+            string tip = Tip(string.IsNullOrEmpty(tipCode) ? labelCode : tipCode);
             bool clicked = GUI.Button(buttonRect, new GUIContent(Utils.LabelWithShortcut(labelCode, null), tip), StyleOrDefault("actionButton"));
             if (Event.current != null && Event.current.type == EventType.Repaint && buttonRect.Contains(Event.current.mousePosition))
             {
@@ -253,10 +261,14 @@ namespace ValheimTooler.UI
             }
         }
 
-        public static bool LabeledToggle(string labelCode, bool value)
+        public static bool LabeledToggle(string labelCode, bool value, bool usesRadius = false)
         {
             string tip = Tip(labelCode);
             GUILayout.BeginHorizontal();
+            if (usesRadius)
+            {
+                RadiusMark(18f);
+            }
             bool next = GUILayout.Toggle(value, new GUIContent("", tip));
             NoteHoverTooltip(tip);
             GUILayout.Label(new GUIContent(VTLocalization.instance.Localize(labelCode), tip));
@@ -443,6 +455,61 @@ namespace ValheimTooler.UI
 
             return tip;
         }
+
+        private static void RadiusMark(float rowHeight)
+        {
+            if (s_radiusMarkStyle == null)
+            {
+                s_radiusMarkStyle = new GUIStyle(GUI.skin.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    imagePosition = ImagePosition.ImageOnly,
+                    padding = new RectOffset(0, 0, 0, 0),
+                    margin = new RectOffset(GUI.skin.button.margin.left, 2, GUI.skin.button.margin.top, GUI.skin.button.margin.bottom)
+                };
+            }
+
+            s_radiusMarkStyle.fixedHeight = rowHeight;
+            string tip = Tip("$vt_action_radius_mark");
+            GUILayout.Label(new GUIContent(RadiusCircle(), tip), s_radiusMarkStyle, GUILayout.Width(18f), GUILayout.Height(rowHeight));
+            NoteHoverTooltip(tip);
+        }
+
+        private static Texture2D RadiusCircle()
+        {
+            if (s_radiusCircle != null)
+            {
+                return s_radiusCircle;
+            }
+
+            const int size = 16;
+            s_radiusCircle = new Texture2D(size, size, TextureFormat.ARGB32, false)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Bilinear
+            };
+            float center = (size - 1) * 0.5f;
+            float radius = center - 2f;
+            Color clear = new Color(0f, 0f, 0f, 0f);
+            Color ring = new Color(0.45f, 0.9f, 1f, 1f);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float distance = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                    float alpha = Mathf.Clamp01(1.6f - Mathf.Abs(distance - radius));
+                    Color pixel = ring;
+                    pixel.a = alpha;
+                    s_radiusCircle.SetPixel(x, y, alpha > 0.05f ? pixel : clear);
+                }
+            }
+
+            s_radiusCircle.Apply();
+            return s_radiusCircle;
+        }
+
+        private static Texture2D s_radiusCircle;
+        private static GUIStyle s_radiusMarkStyle;
 
         private static string MethodLabel(FeatureMethod method)
         {

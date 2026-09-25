@@ -121,11 +121,11 @@ namespace ValheimTooler.Core
                 float columnWidth = Mathf.Max(0f, (row.width - gap) * 0.5f);
                 Rect left = new Rect(row.x, row.y, columnWidth, row.height);
                 Rect right = new Rect(row.x + columnWidth + gap, row.y, columnWidth, row.height);
-                if (Controls.ActionButtonAt(left, BiomeLabel(s_biomeOrder[i]), FeatureMethod.Direct))
+                if (Controls.ActionButtonAt(left, BiomeLabel(s_biomeOrder[i]), FeatureMethod.Direct, "$vt_recipe_biome_learn"))
                 {
                     LearnBiome(s_biomeOrder[i]);
                 }
-                if (i + 1 < s_biomeOrder.Length && Controls.ActionButtonAt(right, BiomeLabel(s_biomeOrder[i + 1]), FeatureMethod.Direct))
+                if (i + 1 < s_biomeOrder.Length && Controls.ActionButtonAt(right, BiomeLabel(s_biomeOrder[i + 1]), FeatureMethod.Direct, "$vt_recipe_biome_learn"))
                 {
                     LearnBiome(s_biomeOrder[i + 1]);
                 }
@@ -164,6 +164,35 @@ namespace ValheimTooler.Core
 
             s_searchTerms = GUILayout.TextField(s_searchTerms ?? "", GUILayout.MinHeight(26));
             RebuildVisible();
+
+            GUILayout.Label(VTLocalization.instance.Localize("$vt_recipe_biome_select"));
+            const float rowHeight = 28f;
+            const float gap = 6f;
+            for (int i = 0; i < s_biomeOrder.Length; i += 2)
+            {
+                Rect row = GUILayoutUtility.GetRect(1f, rowHeight, GUILayout.ExpandWidth(true), GUILayout.Height(rowHeight));
+                float columnWidth = Mathf.Max(0f, (row.width - gap) * 0.5f);
+                Rect left = new Rect(row.x, row.y, columnWidth, row.height);
+                Rect right = new Rect(row.x + columnWidth + gap, row.y, columnWidth, row.height);
+                string selectTip = Controls.Tip("$vt_recipe_biome_select");
+                if (GUI.Button(left, new GUIContent(VTLocalization.instance.Localize(BiomeLabel(s_biomeOrder[i])), selectTip)))
+                {
+                    SelectVisibleBiome(s_biomeOrder[i]);
+                }
+                if (Event.current != null && Event.current.type == EventType.Repaint && left.Contains(Event.current.mousePosition))
+                {
+                    Controls.SetHoverTooltip(selectTip);
+                }
+                if (i + 1 < s_biomeOrder.Length && GUI.Button(right, new GUIContent(VTLocalization.instance.Localize(BiomeLabel(s_biomeOrder[i + 1])), selectTip)))
+                {
+                    SelectVisibleBiome(s_biomeOrder[i + 1]);
+                }
+                if (i + 1 < s_biomeOrder.Length && Event.current != null && Event.current.type == EventType.Repaint && right.Contains(Event.current.mousePosition))
+                {
+                    Controls.SetHoverTooltip(selectTip);
+                }
+                GUILayout.Space(2);
+            }
 
             GUILayout.Label(VTLocalization.instance.Localize("$vt_recipe_selected") + " " + s_selected.Count + " / " + s_visible.Count);
 
@@ -417,7 +446,78 @@ namespace ValheimTooler.Core
                     keys.Add(s_catalog[i].key);
                 }
             }
+            DiscoverBiomeMaterials(biome);
             Notify(Player.m_localPlayer, LearnKeys(keys));
+        }
+
+        private static void DiscoverBiomeMaterials(RecipeBiome biome)
+        {
+            Player player = Player.m_localPlayer;
+            HashSet<string> materials = KnownMaterials(player);
+            if (materials == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < s_catalog.Count; i++)
+            {
+                RecipeEntry entry = s_catalog[i];
+                if (entry.biome != biome || entry.materials == null)
+                {
+                    continue;
+                }
+
+                for (int n = 0; n < entry.materials.Count; n++)
+                {
+                    if (!string.IsNullOrEmpty(entry.materials[n]))
+                    {
+                        materials.Add(entry.materials[n]);
+                    }
+                }
+            }
+
+            PersistKnowledge(player, false);
+        }
+
+        private static void SelectVisibleBiome(RecipeBiome biome)
+        {
+            bool allSelected = true;
+            int matches = 0;
+            for (int i = 0; i < s_visible.Count; i++)
+            {
+                if (s_visible[i].biome != biome)
+                {
+                    continue;
+                }
+
+                matches++;
+                if (!s_selected.Contains(s_visible[i].key))
+                {
+                    allSelected = false;
+                }
+            }
+
+            if (matches == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < s_visible.Count; i++)
+            {
+                if (s_visible[i].biome != biome)
+                {
+                    continue;
+                }
+
+                if (allSelected)
+                {
+                    s_selected.Remove(s_visible[i].key);
+                }
+                else
+                {
+                    s_selected.Add(s_visible[i].key);
+                }
+            }
         }
 
         private static void LearnSelected()
@@ -775,7 +875,8 @@ namespace ValheimTooler.Core
                     displayName = display,
                     icon = icon,
                     biome = ClassifyRecipe(recipe, display),
-                    hasIcon = icon != GetPlaceholderIcon()
+                    hasIcon = icon != GetPlaceholderIcon(),
+                    materials = ItemNames(recipe.m_item, recipe.m_resources)
                 });
             }
 
@@ -847,7 +948,8 @@ namespace ValheimTooler.Core
                     displayName = display,
                     icon = icon,
                     biome = ClassifyPiece(piece, prefab, display),
-                    hasIcon = icon != GetPlaceholderIcon()
+                    hasIcon = icon != GetPlaceholderIcon(),
+                    materials = ItemNames(null, piece.m_resources)
                 });
             }
         }
@@ -1203,6 +1305,38 @@ namespace ValheimTooler.Core
             public Texture icon;
             public RecipeBiome biome;
             public bool hasIcon;
+            public List<string> materials;
+        }
+
+        private static List<string> ItemNames(ItemDrop item, Piece.Requirement[] resources)
+        {
+            List<string> names = new List<string>();
+            if (item != null && item.m_itemData != null && item.m_itemData.m_shared != null && !string.IsNullOrEmpty(item.m_itemData.m_shared.m_name))
+            {
+                names.Add(item.m_itemData.m_shared.m_name);
+            }
+
+            if (resources == null)
+            {
+                return names;
+            }
+
+            for (int i = 0; i < resources.Length; i++)
+            {
+                Piece.Requirement requirement = resources[i];
+                if (requirement == null || requirement.m_resItem == null || requirement.m_resItem.m_itemData == null || requirement.m_resItem.m_itemData.m_shared == null)
+                {
+                    continue;
+                }
+
+                string name = requirement.m_resItem.m_itemData.m_shared.m_name;
+                if (!string.IsNullOrEmpty(name) && !names.Contains(name))
+                {
+                    names.Add(name);
+                }
+            }
+
+            return names;
         }
     }
 }

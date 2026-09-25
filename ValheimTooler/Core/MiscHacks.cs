@@ -12,6 +12,7 @@ namespace ValheimTooler.Core
     public static class MiscHacks
     {
         public static bool s_enableAutopinMap = false;
+        public static bool s_autopinVisibleOnly = false;
         private static int s_playerDamageIdx = 0;
         private static string s_damageToDeal = "1";
 
@@ -38,7 +39,7 @@ namespace ValheimTooler.Core
                 s_players = Player.GetAllPlayers();
                 if (s_enableAutopinMap)
                 {
-                    PinNearbyDeposits();
+                    PinNearbyDeposits(s_autopinVisibleOnly);
                 }
 
                 s_updateTimer = Time.time + s_updateTimerInterval;
@@ -100,17 +101,10 @@ namespace ValheimTooler.Core
                         {
                             DamageAllCharacters();
                         }
-                        if (UI.Controls.ActionButton("$vt_misc_damage_button_radius", FeatureMethod.Direct))
+                        if (UI.Controls.ActionButton("$vt_misc_damage_button_radius", FeatureMethod.Direct, null, true))
                         {
-                            DamageCharactersInRadius(ConfigManager.s_killRadius.Value);
+                            DamageCharactersInRadius(ConfigManager.ActionRadius);
                         }
-                        ConfigManager.s_killRadius.Value = UI.Controls.LabeledSlider(
-                            "$vt_misc_damage_radius",
-                            ConfigManager.s_killRadius.Value,
-                            1f,
-                            80f,
-                            ConfigManager.s_killRadius.Value.ToString("0.0") + "m",
-                            "$vt_misc_damage_radius");
                         if (UI.Controls.ActionButton("$vt_misc_damage_button_players", FeatureMethod.Direct))
                         {
                             DamageAllOtherPlayers();
@@ -125,22 +119,19 @@ namespace ValheimTooler.Core
                             ClearDeathMarkers();
                         }
 
-                        if (UI.Controls.FeatureButton("$vt_misc_autopin", s_enableAutopinMap, FeatureMethod.Direct))
+                        if (UI.Controls.FeatureButton("$vt_misc_autopin", s_enableAutopinMap, FeatureMethod.Direct, null, true))
                         {
                             s_enableAutopinMap = !s_enableAutopinMap;
                             if (s_enableAutopinMap)
                             {
-                                PinNearbyDeposits();
+                                PinNearbyDeposits(s_autopinVisibleOnly);
                             }
                         }
 
-                        ConfigManager.s_autopinRadius.Value = UI.Controls.LabeledSlider(
-                            "$vt_misc_autopin_radius",
-                            ConfigManager.s_autopinRadius.Value,
-                            5f,
-                            200f,
-                            ConfigManager.s_autopinRadius.Value.ToString("0.0") + "m",
-                            "$vt_misc_autopin_radius");
+                        if (UI.Controls.FeatureButton("$vt_misc_autopin_visible", s_autopinVisibleOnly, FeatureMethod.Direct, null, true))
+                        {
+                            s_autopinVisibleOnly = !s_autopinVisibleOnly;
+                        }
 
                         ConfigManager.s_permanentPins.Value = UI.Controls.LabeledToggle("$vt_misc_autopin_permanent", ConfigManager.s_permanentPins.Value);
 
@@ -266,8 +257,8 @@ namespace ValheimTooler.Core
                             ActionToggleESPPickables();
                         }
 
-                        ConfigManager.s_espRadius.Value = UI.Controls.LabeledSlider("$vt_misc_esp_radius", ConfigManager.s_espRadius.Value, 5f, 500f, ConfigManager.s_espRadius.Value.ToString("0.0") + "m", "$vt_misc_esp_radius");
-                        ConfigManager.s_espRadiusEnabled.Value = UI.Controls.LabeledToggle("$vt_misc_radius_enable", ConfigManager.s_espRadiusEnabled.Value);
+                        ConfigManager.s_espRadiusEnabled.Value = UI.Controls.LabeledToggle("$vt_misc_radius_enable", ConfigManager.s_espRadiusEnabled.Value, true);
+                        ConfigManager.s_comfortEsp.Value = UI.Controls.LabeledToggle("$vt_comfort_esp", ConfigManager.s_comfortEsp.Value);
                         UI.Controls.NoteHoverAction("$vt_misc_radius_enable");
                     }
                     UI.Controls.EndSection();
@@ -358,51 +349,134 @@ namespace ValheimTooler.Core
 
         public static void TryPinDeposit(Destructible destructible)
         {
-            if (!s_enableAutopinMap || destructible == null || Player.m_localPlayer == null || Minimap.instance == null)
+            TryPinDeposit(destructible, s_autopinVisibleOnly, true);
+        }
+
+        private static bool TryPinDeposit(Destructible destructible, bool visibleOnly, bool requireToggle)
+        {
+            if ((requireToggle && !s_enableAutopinMap) || destructible == null || Player.m_localPlayer == null || Minimap.instance == null)
             {
-                return;
+                return false;
             }
 
             if (destructible.GetComponent<PinnedObject>() != null)
             {
-                return;
+                return false;
             }
 
             HoverText component = destructible.GetComponent<HoverText>();
             if (component == null)
             {
-                return;
+                return false;
             }
 
             string text = component.m_text != null ? component.m_text.ToLower() : "";
             if (!text.Contains("deposit") && !text.Contains("piece_mudpile"))
             {
-                return;
+                return false;
             }
 
-            float radius = ConfigManager.s_autopinRadius != null ? ConfigManager.s_autopinRadius.Value : 80f;
+            float radius = ConfigManager.ActionRadius;
             if (global::Utils.DistanceXZ(Player.m_localPlayer.transform.position, destructible.transform.position) > radius)
             {
-                return;
+                return false;
+            }
+
+            if (visibleOnly && !IsDepositExposed(destructible.gameObject))
+            {
+                return false;
             }
 
             string random_nounce = new string(Enumerable.Repeat("0123456789", 5).Select(s => s[s_random.Next(s.Length)]).ToArray());
             string name = component.GetHoverName() + " [VT" + random_nounce + "]";
             destructible.gameObject.AddComponent<PinnedObject>().Init(name);
+            return true;
         }
 
-        private static void PinNearbyDeposits()
+        private static int PinNearbyDeposits(bool visibleOnly)
         {
             Destructible[] destructibles = UnityEngine.Object.FindObjectsOfType<Destructible>();
             if (destructibles == null)
             {
-                return;
+                return 0;
             }
 
+            int pinned = 0;
             foreach (Destructible destructible in destructibles)
             {
-                TryPinDeposit(destructible);
+                if (TryPinDeposit(destructible, visibleOnly, !visibleOnly))
+                {
+                    pinned++;
+                }
             }
+
+            return pinned;
+        }
+
+        private static bool IsDepositExposed(GameObject deposit)
+        {
+            Renderer[] renderers = deposit.GetComponentsInChildren<Renderer>();
+            if (renderers == null || renderers.Length == 0)
+            {
+                return false;
+            }
+
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null)
+                {
+                    bounds.Encapsulate(renderers[i].bounds);
+                }
+            }
+
+            Vector3[] samples = new Vector3[]
+            {
+                bounds.center,
+                bounds.center + new Vector3(bounds.extents.x * 0.45f, 0f, 0f),
+                bounds.center + new Vector3(-bounds.extents.x * 0.45f, 0f, 0f),
+                bounds.center + new Vector3(0f, 0f, bounds.extents.z * 0.45f),
+                bounds.center + new Vector3(0f, 0f, -bounds.extents.z * 0.45f)
+            };
+
+            for (int i = 0; i < samples.Length; i++)
+            {
+                Vector3 sample = samples[i];
+                float ground;
+                if (ZoneSystem.instance == null || !ZoneSystem.instance.GetGroundHeight(sample, out ground))
+                {
+                    ground = sample.y;
+                }
+
+                if (bounds.max.y < ground + 0.45f)
+                {
+                    continue;
+                }
+
+                Vector3 origin = new Vector3(sample.x, Mathf.Max(bounds.max.y, ground) + 40f, sample.z);
+                RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 80f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                for (int h = 0; h < hits.Length; h++)
+                {
+                    Collider collider = hits[h].collider;
+                    if (collider == null)
+                    {
+                        continue;
+                    }
+
+                    if (collider.transform == deposit.transform || collider.transform.IsChildOf(deposit.transform))
+                    {
+                        return true;
+                    }
+
+                    if (hits[h].point.y > bounds.max.y + 0.2f)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static void ClearDeathMarkers()

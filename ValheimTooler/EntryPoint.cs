@@ -108,8 +108,10 @@ namespace ValheimTooler
             HandlePassThroughHotkey();
             Controls.PrepareTooltipPass();
 
+            Matrix4x4 previousMatrix = GUI.matrix;
             if (s_showMainWindow)
             {
+                GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(ConfigManager.UiScale, ConfigManager.UiScale, 1f));
                 if (ShouldProcessToolGui())
                 {
                     _valheimToolerRect = GUILayout.Window(1001, _valheimToolerRect, ValheimToolerWindow, VTLocalization.instance.Localize($"$vt_main_title (v{_version})"), GUILayout.Height(10), GUILayout.MinWidth(860));
@@ -127,6 +129,7 @@ namespace ValheimTooler
                     ConfigManager.s_mainWindowPosition.Value = _valheimToolerRect.position;
                 }
                 _wasMainWindowShowed = true;
+                GUI.matrix = previousMatrix;
             }
             else
             {
@@ -142,6 +145,7 @@ namespace ValheimTooler
             }
 
             ESP.DisplayGUI();
+            ComfortEsp.Draw();
             EspRadiusMap.Draw();
             CheatStatus.DrawHudIndicators();
             if (!s_passThroughInput)
@@ -316,7 +320,53 @@ namespace ValheimTooler
             }
 
             Controls.DrawInfoButton(8f, 7f);
-            GUI.DragWindow(new Rect(34, 0, 10000, 32));
+            DrawZoomButtons();
+            DrawActionRadius();
+            GUI.DragWindow(new Rect(34, 0, Mathf.Max(0f, s_mainWindowRect.width - 100f), 32));
+        }
+
+        private static void DrawZoomButtons()
+        {
+            GUIStyle style = InterfaceMaker.CustomSkin != null ? InterfaceMaker.CustomSkin.button : GUI.skin.button;
+            Rect minus = new Rect(s_mainWindowRect.width - 64f, 6f, 26f, 22f);
+            Rect plus = new Rect(s_mainWindowRect.width - 34f, 6f, 26f, 22f);
+            string zoomOut = Controls.Tip("$vt_ui_zoom_out");
+            string zoomIn = Controls.Tip("$vt_ui_zoom_in");
+            if (GUI.Button(minus, new GUIContent("-", zoomOut), style))
+            {
+                ConfigManager.s_uiScale.Value = Mathf.Clamp(ConfigManager.UiScale - 0.1f, 0.6f, 1.8f);
+            }
+            if (GUI.Button(plus, new GUIContent("+", zoomIn), style))
+            {
+                ConfigManager.s_uiScale.Value = Mathf.Clamp(ConfigManager.UiScale + 0.1f, 0.6f, 1.8f);
+            }
+            if (Event.current != null && Event.current.type == EventType.Repaint)
+            {
+                if (minus.Contains(Event.current.mousePosition))
+                {
+                    Controls.SetHoverTooltip(zoomOut);
+                }
+                else if (plus.Contains(Event.current.mousePosition))
+                {
+                    Controls.SetHoverTooltip(zoomIn);
+                }
+            }
+        }
+
+        private static void DrawActionRadius()
+        {
+            GUILayout.Space(8);
+            float radius = ConfigManager.ActionRadius;
+            string label = VTLocalization.instance.Localize("$vt_action_radius") + " " + radius.ToString("0.0") + "m";
+            GUILayout.Label(new GUIContent(label, Controls.Tip("$vt_action_radius")));
+            Controls.NoteHoverTooltip(Controls.Tip("$vt_action_radius"));
+            float next = GUILayout.HorizontalSlider(radius, 1f, 80f);
+            Controls.NoteHoverAction("$vt_action_radius");
+            Controls.NoteHoverTooltip(Controls.Tip("$vt_action_radius"));
+            if (!Mathf.Approximately(next, radius))
+            {
+                ConfigManager.s_actionRadius.Value = next;
+            }
         }
 
         public static bool IsPointerOverTool()
@@ -326,7 +376,8 @@ namespace ValheimTooler
                 return false;
             }
 
-            Vector2 mouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+            float scale = ConfigManager.UiScale;
+            Vector2 mouse = new Vector2(Input.mousePosition.x / scale, (Screen.height - Input.mousePosition.y) / scale);
             if (s_mainWindowRect.Contains(mouse))
             {
                 return true;

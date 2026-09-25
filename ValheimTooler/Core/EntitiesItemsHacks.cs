@@ -114,17 +114,10 @@ namespace ValheimTooler.Core
                 {
                     RemoveAllDrops();
                 }
-                if (UI.Controls.ActionButton("$vt_entities_drops_radius_button", FeatureMethod.Direct))
+                if (UI.Controls.ActionButton("$vt_entities_drops_radius_button", FeatureMethod.Direct, null, true))
                 {
-                    RemoveDropsInRadius(ConfigManager.s_removeDropsRadius.Value);
+                    RemoveDropsInRadius(ConfigManager.ActionRadius);
                 }
-                ConfigManager.s_removeDropsRadius.Value = UI.Controls.LabeledSlider(
-                    "$vt_entities_drops_radius",
-                    ConfigManager.s_removeDropsRadius.Value,
-                    1f,
-                    80f,
-                    ConfigManager.s_removeDropsRadius.Value.ToString("0.0") + "m",
-                    "$vt_entities_drops_radius");
             }
             UI.Controls.EndSection();
 

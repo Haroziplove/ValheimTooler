@@ -1,5 +1,6 @@
 using System.Reflection;
 using HarmonyLib;
+using UnityEngine.EventSystems;
 
 namespace ValheimTooler.Patches
 {
@@ -27,6 +28,15 @@ namespace ValheimTooler.Patches
                 }
 
                 return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(EventSystem), "Update")]
+        class BlockGameUiClicksOnTool
+        {
+            private static bool Prefix()
+            {
+                return !(EntryPoint.IsToolInteractive() && EntryPoint.IsPointerOverTool());
             }
         }
     }

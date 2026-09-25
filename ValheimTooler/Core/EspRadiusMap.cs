@@ -35,7 +35,7 @@ namespace ValheimTooler.Core
             }
 
             Vector3 center = Player.m_localPlayer.transform.position;
-            float radius = ConfigManager.s_espRadius.Value;
+            float radius = ConfigManager.ActionRadius;
             const int segments = 64;
             Vector2 prev = WorldToGui(minimap, image, PointOnCircle(center, radius, 0f));
             for (int i = 1; i <= segments; i++)

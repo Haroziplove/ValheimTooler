@@ -20,39 +20,21 @@ namespace ValheimTooler.Core
 
             string hover = UI.Controls.HoveredAction;
             Vector3 pos = Player.m_localPlayer.transform.position;
-            if (hover == "$vt_player_clean_cheated_drops" || hover == "$vt_player_clean_cheated_drops_radius")
+            if (hover == "$vt_player_clean_cheated_drops"
+                || hover == "$vt_player_tame_creatures"
+                || hover == "$vt_entities_drops_radius_button"
+                || hover == "$vt_misc_radius_enable"
+                || hover == "$vt_misc_damage_button_radius"
+                || hover == "$vt_misc_autopin"
+                || hover == "$vt_misc_autopin_visible"
+                || hover == "$vt_action_radius"
+                || hover == "$vt_terrain_tree_variant"
+                || hover == "$vt_terrain_tree_left"
+                || hover == "$vt_terrain_tree_right"
+                || hover == "$vt_terrain_tree_smaller"
+                || hover == "$vt_terrain_tree_bigger")
             {
-                Tick(true, pos, CheatStatus.DropCleanRadius, false);
-                return;
-            }
-
-            if (hover == "$vt_player_tame_creatures" || hover == "$vt_player_tame_radius")
-            {
-                Tick(true, pos, ConfigManager.s_tameRadius.Value, false);
-                return;
-            }
-
-            if (hover == "$vt_entities_drops_radius_button" || hover == "$vt_entities_drops_radius")
-            {
-                Tick(true, pos, ConfigManager.s_removeDropsRadius.Value, false);
-                return;
-            }
-
-            if (hover == "$vt_misc_esp_radius" || hover == "$vt_misc_radius_enable")
-            {
-                Tick(true, pos, ConfigManager.s_espRadius.Value, false);
-                return;
-            }
-
-            if (hover == "$vt_misc_damage_button_radius" || hover == "$vt_misc_damage_radius")
-            {
-                Tick(true, pos, ConfigManager.s_killRadius.Value, false);
-                return;
-            }
-
-            if (hover == "$vt_misc_autopin" || hover == "$vt_misc_autopin_radius")
-            {
-                Tick(true, pos, ConfigManager.s_autopinRadius.Value, false);
+                Tick(true, pos, ConfigManager.ActionRadius, false);
                 return;
             }
 
@@ -224,12 +206,36 @@ namespace ValheimTooler.Core
 
         private static float GroundY(Vector3 pos)
         {
+            float fallback = pos.y + 0.2f;
             if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(pos, out float height))
             {
-                return height + 0.2f;
+                fallback = height + 0.2f;
             }
 
-            return pos.y + 0.2f;
+            if (Player.m_localPlayer == null)
+            {
+                return fallback;
+            }
+
+            float start = Player.m_localPlayer.transform.position.y + 1.4f;
+            RaycastHit[] hits = Physics.RaycastAll(new Vector3(pos.x, start, pos.z), Vector3.down, 4f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            float best = float.MinValue;
+            bool found = false;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (hits[i].normal.y < 0.45f || hits[i].point.y > start)
+                {
+                    continue;
+                }
+
+                if (hits[i].point.y > best)
+                {
+                    best = hits[i].point.y;
+                    found = true;
+                }
+            }
+
+            return found ? best + 0.08f : fallback;
         }
     }
 }

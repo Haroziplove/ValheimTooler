@@ -134,17 +134,7 @@ namespace ValheimTooler.Core
 
         public static float DropCleanRadius
         {
-            get
-            {
-                return ConfigManager.s_cleanDroppedRadius != null ? ConfigManager.s_cleanDroppedRadius.Value : 20f;
-            }
-            set
-            {
-                if (ConfigManager.s_cleanDroppedRadius != null)
-                {
-                    ConfigManager.s_cleanDroppedRadius.Value = value;
-                }
-            }
+            get { return ConfigManager.ActionRadius; }
         }
 
         public static bool GetAchievementsBypass()
@@ -521,12 +511,7 @@ namespace ValheimTooler.Core
 
         private static float NearbyStatusRadius()
         {
-            if (ConfigManager.s_espRadiusEnabled != null && ConfigManager.s_espRadiusEnabled.Value)
-            {
-                return ConfigManager.s_espRadius.Value;
-            }
-
-            return 80f;
+            return ConfigManager.ActionRadius;
         }
 
         private static void DrawGroundLine()

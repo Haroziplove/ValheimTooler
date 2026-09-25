@@ -236,7 +236,7 @@ namespace ValheimTooler.Core
                 return false;
             }
 
-            return !ConfigManager.s_espRadiusEnabled.Value || distance <= ConfigManager.s_espRadius.Value;
+            return !ConfigManager.s_espRadiusEnabled.Value || distance <= ConfigManager.ActionRadius;
         }
 
         public static void DisplayGUI()

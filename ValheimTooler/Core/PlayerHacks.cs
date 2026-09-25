@@ -333,17 +333,10 @@ namespace ValheimTooler.Core
                                 SetNoPlacementCost(true, s_noPlacementMethod);
                             }
                         }
-                        if (UI.Controls.ActionButton("$vt_player_tame_creatures", FeatureMethod.Direct))
+                        if (UI.Controls.ActionButton("$vt_player_tame_creatures", FeatureMethod.Direct, null, true))
                         {
-                            Player.m_localPlayer.VTTameNearbyCreatures(ConfigManager.s_tameRadius.Value);
+                            Player.m_localPlayer.VTTameNearbyCreatures(ConfigManager.ActionRadius);
                         }
-                        ConfigManager.s_tameRadius.Value = UI.Controls.LabeledSlider(
-                            "$vt_player_tame_radius",
-                            ConfigManager.s_tameRadius.Value,
-                            1f,
-                            80f,
-                            ConfigManager.s_tameRadius.Value.ToString("0.0") + "m",
-                            "$vt_player_tame_radius");
                         if (UI.Controls.FeatureButton("$vt_player_infinite_weight", s_inventoryNoWeightLimit, FeatureMethod.Direct, ConfigManager.s_inventoryInfiniteWeightShortcut.Value))
                         {
                             ActionCurrentPlayerToggleInventoryInfiniteWeight();
@@ -591,7 +584,7 @@ namespace ValheimTooler.Core
                                 Player.m_localPlayer.VTSendMessage(message);
                             }
                         }
-                        if (UI.Controls.ActionButton("$vt_player_clean_cheated_drops", FeatureMethod.Direct))
+                        if (UI.Controls.ActionButton("$vt_player_clean_cheated_drops", FeatureMethod.Direct, null, true))
                         {
                             int cleared = InventoryCleaner.ClearNearbyDropped(CheatStatus.DropCleanRadius);
                             CheatStatus.ForceGroundRefresh();
@@ -600,13 +593,6 @@ namespace ValheimTooler.Core
                                 Player.m_localPlayer.VTSendMessage(VTLocalization.instance.Localize("$vt_player_clean_cheated_done") + " " + cleared);
                             }
                         }
-                        CheatStatus.DropCleanRadius = UI.Controls.LabeledSlider(
-                            "$vt_player_clean_cheated_drops_radius",
-                            CheatStatus.DropCleanRadius,
-                            1f,
-                            80f,
-                            CheatStatus.DropCleanRadius.ToString("0.0") + "m",
-                            "$vt_player_clean_cheated_drops_radius");
                         CheatStatus.DrawCleanPreviewCount();
 
                         bool achievements = CheatStatus.GetAchievementsBypass();

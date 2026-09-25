@@ -10,12 +10,11 @@ namespace ValheimTooler.Core
 {
     public static class TerrainShaper
     {
-        private static float s_radius = 10f;
         private static float s_depth = 1f;
         private static float s_strength = 0.01f;
         private static TerrainModifier.PaintType s_paintType = TerrainModifier.PaintType.Dirt;
 
-        public static float Radius => s_radius;
+        public static float Radius => ConfigManager.ActionRadius;
 
         public static void Start()
         {
@@ -58,7 +57,7 @@ namespace ValheimTooler.Core
 
         public static bool IsPreviewHover(string action)
         {
-            return action == "$vt_terrainshaper_radius"
+            return action == "$vt_action_radius"
                 || action == "$vt_terrainshaper_shape"
                 || action == "$vt_terrainshaper_action_level"
                 || action == "$vt_terrainshaper_action_lower"
@@ -72,17 +71,6 @@ namespace ValheimTooler.Core
         {
             UI.Controls.BeginSection("$vt_terrainshaper_settings");
             {
-                GUILayout.BeginHorizontal();
-                {
-                    GUILayout.Label(VTLocalization.instance.Localize("$vt_terrainshaper_radius (") + s_radius.ToString("F1") + ")", GUILayout.ExpandWidth(false));
-                    UI.Controls.NoteHoverAction("$vt_terrainshaper_radius");
-                    UI.Controls.NoteHoverTooltip(UI.Controls.Tip("$vt_terrainshaper_radius"));
-                    s_radius = GUILayout.HorizontalSlider(s_radius, 1f, 50f, GUILayout.ExpandWidth(true));
-                    UI.Controls.NoteHoverAction("$vt_terrainshaper_radius");
-                    UI.Controls.NoteHoverTooltip(UI.Controls.Tip("$vt_terrainshaper_radius"));
-                }
-                GUILayout.EndHorizontal();
-
                 GUILayout.BeginHorizontal();
                 {
                     GUILayout.Label(VTLocalization.instance.Localize("$vt_terrainshaper_depth (") + s_depth.ToString("F2") + ")", GUILayout.ExpandWidth(false));
@@ -109,23 +97,23 @@ namespace ValheimTooler.Core
 
             UI.Controls.BeginSection("$vt_terrainshaper_actions");
             {
-                if (UI.Controls.ActionButton("$vt_terrainshaper_action_level", FeatureMethod.Direct, ConfigManager.s_terrainLevelShortcut.Value))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_level", FeatureMethod.Direct, ConfigManager.s_terrainLevelShortcut.Value, true))
                 {
                     ActionTerrainLevel();
                 }
-                if (UI.Controls.ActionButton("$vt_terrainshaper_action_lower", FeatureMethod.Direct, ConfigManager.s_terrainLowerShortcut.Value))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_lower", FeatureMethod.Direct, ConfigManager.s_terrainLowerShortcut.Value, true))
                 {
                     ActionTerrainLower();
                 }
-                if (UI.Controls.ActionButton("$vt_terrainshaper_action_raise", FeatureMethod.Direct, ConfigManager.s_terrainRaiseShortcut.Value))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_raise", FeatureMethod.Direct, ConfigManager.s_terrainRaiseShortcut.Value, true))
                 {
                     ActionTerrainRaise();
                 }
-                if (UI.Controls.ActionButton("$vt_terrainshaper_action_reset", FeatureMethod.Direct, ConfigManager.s_terrainResetShortcut.Value))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_reset", FeatureMethod.Direct, ConfigManager.s_terrainResetShortcut.Value, true))
                 {
                     ActionTerrainReset();
                 }
-                if (UI.Controls.ActionButton("$vt_terrainshaper_action_smooth", FeatureMethod.Direct, ConfigManager.s_terrainSmoothShortcut.Value))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_smooth", FeatureMethod.Direct, ConfigManager.s_terrainSmoothShortcut.Value, true))
                 {
                     ActionTerrainSmooth();
                 }
@@ -149,10 +137,39 @@ namespace ValheimTooler.Core
                 }
                 GUILayout.EndHorizontal();
 
-                if (UI.Controls.ActionButton("$vt_terrainshaper_action_paint", FeatureMethod.Direct, ConfigManager.s_terrainPaintShortcut.Value))
+                if (UI.Controls.ActionButton("$vt_terrainshaper_action_paint", FeatureMethod.Direct, ConfigManager.s_terrainPaintShortcut.Value, true))
                 {
                     ActionTerrainPaint();
                 }
+            }
+            UI.Controls.EndSection();
+
+            UI.Controls.BeginSection("$vt_terrain_trees");
+            {
+                if (UI.Controls.ActionButton("$vt_terrain_tree_variant", FeatureMethod.Direct, null, true))
+                {
+                    CycleTreeLooks();
+                }
+                GUILayout.BeginHorizontal();
+                if (UI.Controls.ActionButton("$vt_terrain_tree_left", FeatureMethod.Direct, null, true))
+                {
+                    RotateTrees(-10f);
+                }
+                if (UI.Controls.ActionButton("$vt_terrain_tree_right", FeatureMethod.Direct, null, true))
+                {
+                    RotateTrees(10f);
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (UI.Controls.ActionButton("$vt_terrain_tree_smaller", FeatureMethod.Direct, null, true))
+                {
+                    ScaleTrees(0.9f);
+                }
+                if (UI.Controls.ActionButton("$vt_terrain_tree_bigger", FeatureMethod.Direct, null, true))
+                {
+                    ScaleTrees(1.1f);
+                }
+                GUILayout.EndHorizontal();
             }
             UI.Controls.EndSection();
         }
@@ -171,7 +188,7 @@ namespace ValheimTooler.Core
         {
             if (Player.m_localPlayer != null)
             {
-                Ground.Level(Player.m_localPlayer.transform.position, s_radius);
+                Ground.Level(Player.m_localPlayer.transform.position, Radius);
             }
         }
 
@@ -179,7 +196,7 @@ namespace ValheimTooler.Core
         {
             if (Player.m_localPlayer != null)
             {
-                Ground.Lower(Player.m_localPlayer.transform.position, s_radius, s_depth, s_strength);
+                Ground.Lower(Player.m_localPlayer.transform.position, Radius, s_depth, s_strength);
             }
         }
 
@@ -188,7 +205,7 @@ namespace ValheimTooler.Core
         {
             if (Player.m_localPlayer != null)
             {
-                Ground.Raise(Player.m_localPlayer.transform.position, s_radius, s_depth, s_strength);
+                Ground.Raise(Player.m_localPlayer.transform.position, Radius, s_depth, s_strength);
             }
         }
 
@@ -196,7 +213,7 @@ namespace ValheimTooler.Core
         {
             if (Player.m_localPlayer != null)
             {
-                Ground.Reset(Player.m_localPlayer.transform.position, s_radius);
+                Ground.Reset(Player.m_localPlayer.transform.position, Radius);
             }
         }
 
@@ -204,7 +221,7 @@ namespace ValheimTooler.Core
         {
             if (Player.m_localPlayer != null)
             {
-                Ground.Smooth(Player.m_localPlayer.transform.position, s_radius, s_strength);
+                Ground.Smooth(Player.m_localPlayer.transform.position, Radius, s_strength);
             }
         }
 
@@ -212,8 +229,241 @@ namespace ValheimTooler.Core
         {
             if (Player.m_localPlayer != null)
             {
-                Ground.Paint(Player.m_localPlayer.transform.position, s_radius, s_paintType);
+                Ground.Paint(Player.m_localPlayer.transform.position, Radius, s_paintType);
             }
+        }
+
+        private static void CycleTreeLooks()
+        {
+            if (Player.m_localPlayer == null || ZNetScene.instance == null)
+            {
+                return;
+            }
+
+            Dictionary<string, List<string>> families = TreeFamilies();
+            int changed = 0;
+            foreach (TreeBase tree in TreesInRadius())
+            {
+                string current = PrefabName(tree.gameObject.name);
+                string family = TreeFamily(current);
+                List<string> names;
+                if (!families.TryGetValue(family, out names) || names.Count < 2)
+                {
+                    continue;
+                }
+
+                int index = -1;
+                for (int i = 0; i < names.Count; i++)
+                {
+                    if (string.Equals(names[i], current, StringComparison.OrdinalIgnoreCase))
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+                string nextName = names[(index < 0 ? 0 : index + 1) % names.Count];
+                GameObject prefab = ZNetScene.instance.GetPrefab(nextName);
+                if (prefab == null || nextName == current)
+                {
+                    continue;
+                }
+
+                Vector3 position = tree.transform.position;
+                Quaternion rotation = tree.transform.rotation;
+                ZNetView view = tree.GetComponent<ZNetView>();
+                if (view != null && view.IsValid())
+                {
+                    view.Destroy();
+                }
+                else
+                {
+                    UnityEngine.Object.Destroy(tree.gameObject);
+                }
+
+                UnityEngine.Object.Instantiate(prefab, position, rotation);
+                changed++;
+            }
+
+            Player.m_localPlayer.VTSendMessage(VTLocalization.instance.Localize("$vt_terrain_tree_variant") + " " + changed);
+        }
+
+        private static void RotateTrees(float degrees)
+        {
+            int changed = 0;
+            foreach (TreeBase tree in TreesInRadius())
+            {
+                ZNetView view = tree.GetComponent<ZNetView>();
+                if (view != null && view.IsValid() && !view.IsOwner())
+                {
+                    view.ClaimOwnership();
+                }
+
+                Quaternion rotation = Quaternion.Euler(0f, degrees, 0f) * tree.transform.rotation;
+                tree.transform.rotation = rotation;
+                if (view != null && view.GetZDO() != null)
+                {
+                    view.GetZDO().SetRotation(rotation);
+                }
+                changed++;
+            }
+
+            if (Player.m_localPlayer != null)
+            {
+                string label = degrees < 0f ? "$vt_terrain_tree_left" : "$vt_terrain_tree_right";
+                Player.m_localPlayer.VTSendMessage(VTLocalization.instance.Localize(label) + " " + changed);
+            }
+        }
+
+        private static void ScaleTrees(float factor)
+        {
+            int changed = 0;
+            foreach (TreeBase tree in TreesInRadius())
+            {
+                Vector3 scale = tree.transform.localScale * factor;
+                scale.x = Mathf.Clamp(scale.x, 0.35f, 3f);
+                scale.y = Mathf.Clamp(scale.y, 0.35f, 3f);
+                scale.z = Mathf.Clamp(scale.z, 0.35f, 3f);
+                tree.transform.localScale = scale;
+
+                ZNetView view = tree.GetComponent<ZNetView>();
+                if (view != null && view.IsValid())
+                {
+                    if (!view.IsOwner())
+                    {
+                        view.ClaimOwnership();
+                    }
+
+                    view.m_syncInitialScale = true;
+                    if (view.GetZDO() != null)
+                    {
+                        view.GetZDO().Set("scale", scale);
+                    }
+                }
+
+                changed++;
+            }
+
+            if (Player.m_localPlayer != null)
+            {
+                string label = factor < 1f ? "$vt_terrain_tree_smaller" : "$vt_terrain_tree_bigger";
+                Player.m_localPlayer.VTSendMessage(VTLocalization.instance.Localize(label) + " " + changed);
+            }
+        }
+
+        private static List<TreeBase> TreesInRadius()
+        {
+            List<TreeBase> trees = new List<TreeBase>();
+            if (Player.m_localPlayer == null)
+            {
+                return trees;
+            }
+
+            Vector3 origin = Player.m_localPlayer.transform.position;
+            TreeBase[] found = UnityEngine.Object.FindObjectsOfType<TreeBase>();
+            if (found == null)
+            {
+                return trees;
+            }
+
+            foreach (TreeBase tree in found)
+            {
+                if (tree != null && global::Utils.DistanceXZ(origin, tree.transform.position) <= Radius)
+                {
+                    trees.Add(tree);
+                }
+            }
+
+            return trees;
+        }
+
+        private static Dictionary<string, List<string>> TreeFamilies()
+        {
+            var families = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            if (ZNetScene.instance == null)
+            {
+                return families;
+            }
+
+            foreach (GameObject prefab in ZNetScene.instance.m_prefabs)
+            {
+                if (prefab == null || prefab.GetComponent<TreeBase>() == null)
+                {
+                    continue;
+                }
+
+                string name = prefab.name;
+                if (IsTreeDiscard(name))
+                {
+                    continue;
+                }
+
+                string family = TreeFamily(name);
+                List<string> names;
+                if (!families.TryGetValue(family, out names))
+                {
+                    names = new List<string>();
+                    families[family] = names;
+                }
+                if (!names.Contains(name))
+                {
+                    names.Add(name);
+                }
+            }
+
+            return families;
+        }
+
+        private static string PrefabName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return "";
+            }
+
+            string cleaned = name.Replace("(Clone)", "").Trim();
+            int paren = cleaned.IndexOf('(');
+            if (paren > 0)
+            {
+                cleaned = cleaned.Substring(0, paren).Trim();
+            }
+
+            return cleaned;
+        }
+
+        private static bool IsTreeDiscard(string name)
+        {
+            string lower = name.ToLowerInvariant();
+            return lower.Contains("stub") || lower.Contains("stump") || lower.Contains("log") || lower.Contains("dead");
+        }
+
+        private static string TreeFamily(string name)
+        {
+            string cleaned = PrefabName(name).ToLowerInvariant();
+            if (cleaned.EndsWith("_aut") || cleaned.EndsWith("_autumn"))
+            {
+                cleaned = cleaned.Substring(0, cleaned.LastIndexOf('_'));
+            }
+
+            bool small = cleaned.Contains("small");
+            string stem = "";
+            for (int i = 0; i < cleaned.Length; i++)
+            {
+                if (char.IsLetter(cleaned[i]))
+                {
+                    stem += cleaned[i];
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (stem.Length == 0)
+            {
+                stem = cleaned;
+            }
+
+            return (small ? "small:" : "full:") + stem;
         }
     }
 

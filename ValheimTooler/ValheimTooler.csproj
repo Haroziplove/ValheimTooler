@@ -107,6 +107,9 @@
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>F:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>F:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
@@ -154,6 +157,7 @@
     <Compile Include="Core\EntitiesItemsHacks.cs" />
     <Compile Include="Core\FeatureMethod.cs" />
     <Compile Include="Core\CheatStatus.cs" />
+    <Compile Include="Core\ComfortEsp.cs" />
     <Compile Include="Core\InventoryCleaner.cs" />
     <Compile Include="Core\Extensions\CharacterExtensions.cs" />
     <Compile Include="Core\Extensions\MinimapExtensions.cs" />
