@@ -64,12 +64,6 @@ The first launch writes `BepInEx/config/valheimtooler_settings.cfg`. That file s
 
 ## Credits
 
-* [Guided Hacking](https://guidedhacking.com/threads/how-to-hack-unity-games-using-mono-injection-tutorial.11674/) and [Unknown Cheats](https://www.unknowncheats.me/forum/unity/285864-beginners-guide-hacking-unity-games.html) for the early Unity injection notes.
-* [wh0am15533](https://github.com/wh0am15533) for Unity Runtime DevTools and [SharpMonoInjector](https://github.com/wh0am15533/SharpMonoInjector).
-* [KillerGoldFisch](https://github.com/KillerGoldFisch) for the BepInEx loading approach.
-* [themaoci](https://github.com/themaoci) for Harmony patches, deposit pinning, instant craft, and teleporting with restricted items.
-* [Gungnir](https://github.com/zambony/Gungnir) for the terrain brush.
 * [BepInEx](https://github.com/BepInEx/BepInEx) for the configuration format.
-* [BastienMarais](https://github.com/BastienMarais) for testing and feature ideas.
 
 Original [Valheim Tooler](https://github.com/Astropilot/ValheimTooler) by Astropilot.
