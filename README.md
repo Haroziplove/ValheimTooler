@@ -12,7 +12,7 @@ A BepInEx window for running a Valheim world from inside the game. Version 2.0.6
 
 **+** and **−** in the top-right of the window make the whole tool larger or smaller. The size is remembered.
 
-The **i** button in the top-left explains the two action styles. **Direct** uses game calls and does not mark items or builds as cheated. **DevCommands** uses the game's own cheat flags, so items or builds can be tagged.
+The **i** button in the top-left explains how actions run. Options without a tag use **Direct**: game calls that do not mark items or builds as cheated. A **Direct** or **DevCommands** tag means that option can use either method. **DevCommands** uses the game's own cheat flags, so items or builds can be tagged.
 
 ## Action radius
 
@@ -56,9 +56,9 @@ One slider at the bottom of the window sets the distance for every option marked
 
 ## Install
 
-Install [BepInEx for Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/) first. Copy `ValheimTooler.dll`, `ValheimToolerMod.dll`, and `SharpConfig.dll` into `BepInEx/plugins/ValheimTooler/`, then start the game with mods enabled.
+Install [BepInEx for Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/) first. Copy `ValheimAdminTool.dll`, `ValheimAdminToolMod.dll`, and `SharpConfig.dll` into `BepInEx/plugins/ValheimAdminTool/`, then start the game with mods enabled.
 
-To build it yourself, compile `ValheimTooler.sln` as Release | x64 and point the Valheim assembly references at your own game folder.
+To build it yourself, compile `ValheimAdminTool.sln` as Release | x64 and point the Valheim assembly references at your own game folder.
 
 The first launch writes `BepInEx/config/valheimtooler_settings.cfg`. That file stores the toggle key, language, startup visibility, and shortcuts.
 

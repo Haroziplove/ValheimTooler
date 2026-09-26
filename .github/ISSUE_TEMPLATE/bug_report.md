@@ -15,6 +15,6 @@ If applicable, add screenshots to help explain your problem.
 
 **Information (please complete the following information):**
  - Game version: [e.g. 0.219.16 (Steam / GamePass)]
- - ValheimTooler version: [e.g. 1.11.0]
- - ValheimTooler distribution: [e.g. Mod / Launcher]
+ - ValheimAdminTool version: [e.g. 1.11.0]
+ - ValheimAdminTool distribution: [e.g. Mod / Launcher]
 - Has other mods used? [e.g. Yes / No]
