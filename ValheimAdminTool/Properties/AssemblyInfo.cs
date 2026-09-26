@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("ValheimAdminTool")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Astropilot")]
 [assembly: AssemblyProduct("ValheimAdminTool")]
-[assembly: AssemblyCopyright("")]
+[assembly: AssemblyCopyright("Copyright © Astropilot 2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

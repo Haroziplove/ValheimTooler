@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("ValheimAdminToolLauncher")]
-[assembly: AssemblyCopyright("")]
+[assembly: AssemblyCopyright("Copyright © Astropilot 2024")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
