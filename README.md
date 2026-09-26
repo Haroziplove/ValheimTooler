@@ -8,7 +8,11 @@ A BepInEx window for running a Valheim world from inside the game. Version 2.0.6
 
 **End** only works while the window is on screen. It leaves the window visible and gives mouse control back to the game, so you can walk, fight, and use menus without the tool taking the click. Press End again to make the window clickable. If you hide the window with Delete, End does nothing until you show the window again. Hiding the window does not change whether End is on or off.
 
-**Home** shows or hides a comfort reference table. The table lists every comfort item in the game and how much comfort it gives, using the current Valheim 1.0 groups: only the highest item in a category counts, and items with no category stack with each other. Category names are in capitals, comfort numbers sit on the right, and light lines separate the rows. Rows you already have nearby are highlighted in dark text, so an empty category is one you are missing. The table ignores clicks while the tool is hidden. While it is hidden, Page Up and Page Down scroll the list. While the tool is open you can drag the table by its title bar, and **+** and **−** in the table's top-right change its size.
+**Home** shows or hides a comfort reference table.
+
+![Comfort items](screenshots/comfort.png)
+
+The table lists every comfort item in the game and how much comfort it gives, using the current Valheim 1.0 groups: only the highest item in a category counts, and items with no category stack with each other. Category names are in capitals, comfort numbers sit on the right, and light lines separate the rows. Rows you already have nearby are highlighted in dark text, so an empty category is one you are missing. The table ignores clicks while the tool is hidden. While it is hidden, Page Up and Page Down scroll the list. While the tool is open you can drag the table by its title bar, and **+** and **−** in the table's top-right change its size.
 
 **+** and **−** in the top-right of the window make the whole tool larger or smaller. The size is remembered.
 
@@ -19,6 +23,8 @@ The **i** button in the top-left explains how actions run. Options without a tag
 One slider at the bottom of the window sets the distance for every option marked with a circle. That covers tame, dropped items, kill, autopin, ESP, terrain, and trees. Hover a circled option to see the dashed range on the ground, including on stone floors.
 
 ## Player
+
+![Player](screenshots/player.png)
 
 * God mode, fly, ghost, unlimited stamina for you, and stamina controls for other nearby players.
 * No placement cost, instant craft, and unlimited carry weight.
@@ -33,6 +39,8 @@ One slider at the bottom of the window sets the distance for every option marked
 
 ## Entities and items
 
+![Entities and items](screenshots/entities.png)
+
 * Spawn a prefab in front of you. The list starts empty so a click does not spawn the first creature. Set quantity and level, then press Spawn.
 * Remove every dropped item, or only the ones inside the action radius.
 * Item Giver opens a separate window. Pick a category, quality, and amount, then add the item. You can also set who the item was crafted by.
@@ -41,10 +49,14 @@ One slider at the bottom of the window sets the distance for every option marked
 
 ## Terrain
 
+![Terrain](screenshots/terrain.png)
+
 * Level, raise, lower, smooth, reset, or paint ground inside the action radius. Depth and strength have their own sliders. The brush can be a circle or a square.
 * Cycle tree look swaps a tree for another look of the same kind. Rotate turns trees 10 degrees left or right. Shrink and Grow change their size a step at a time. All of these use the action radius.
 
 ## Misc
+
+![Misc](screenshots/misc.png)
 
 * Deal damage to one player, ignoring the no-PVP flag. Kill creatures in the action radius, kill every creature, or kill every other player.
 * Clear death pins. Autopin marks ore deposits inside the action radius. **Pin visible deposits only** is a second switch: while Autopin is on, buried silver and scrap iron covered by trees are skipped.
@@ -56,7 +68,7 @@ One slider at the bottom of the window sets the distance for every option marked
 
 ## Install
 
-Install [BepInEx for Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/) first. Copy `ValheimAdminTool.dll`, `ValheimAdminToolMod.dll`, and `SharpConfig.dll` into `BepInEx/plugins/ValheimAdminTool/`, then start the game with mods enabled.
+Install [BepInEx for Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/) first. Copy `ValheimAdminTool.dll`, `ValheimAdminToolMod.dll`, and `SharpConfig.dll` from [`Built DLLs`](Built%20DLLs) into `BepInEx/plugins/ValheimAdminTool/`, then start the game with mods enabled.
 
 To build it yourself, compile `ValheimAdminTool.sln` as Release | x64 and point the Valheim assembly references at your own game folder.
 
