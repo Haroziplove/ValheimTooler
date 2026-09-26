@@ -22,7 +22,7 @@
 
 ## About
 
-ValheimTooler is a free tool with a large set of cheats and admin helpers for Valheim. It is for educational and private use. Some features will wreck a normal playthrough, especially on multiplayer servers. Use them with care.
+ValheimAdminTool is a free tool with a large set of cheats and admin helpers for Valheim. It is for educational and private use. Some features will wreck a normal playthrough, especially on multiplayer servers. Use them with care.
 
 This repository is a **community fork** of [Astropilot/ValheimTooler](https://github.com/Astropilot/ValheimTooler) by Yohann MARTIN (Astropilot). The original project last targeted Valheim 0.219.x and is not maintained for Valheim 1.0.
 
@@ -78,7 +78,7 @@ Features:
 | --- | --- | --- |
 | Author | [Astropilot](https://github.com/Astropilot) (Yohann MARTIN) | [Haroziplove](https://github.com/Haroziplove) |
 | Last official release | 1.11.x for Valheim 0.219.14 | **1.12.0 for Valheim 1.0.7** |
-| Source | [Astropilot/ValheimTooler](https://github.com/Astropilot/ValheimTooler) | [Haroziplove/ValheimTooler](https://github.com/Haroziplove/ValheimTooler) |
+| Source | [Astropilot/ValheimTooler](https://github.com/Astropilot/ValheimTooler) | [Haroziplove/ValheimAdminTool](https://github.com/Haroziplove/ValheimAdminTool) |
 
 1.12.0 changes for Valheim 1.0:
 
@@ -93,18 +93,18 @@ Features:
 
 Prebuilt 1.12.0 files are in [`Built DLLs`](./Built%20DLLs):
 
-* `ValheimTooler.dll`
-* `ValheimToolerMod.dll`
+* `ValheimAdminTool.dll`
+* `ValheimAdminToolMod.dll`
 * `SharpConfig.dll`
 
 1. Install BepInEx for Valheim first.
-2. Copy all three files from [`Built DLLs`](./Built%20DLLs) into `BepInEx/plugins/ValheimTooler/`.
-   * Steam install: `Valheim/BepInEx/plugins/ValheimTooler/`
-   * Thunderstore / r2modman: your profile's `BepInEx/plugins/ValheimTooler/`
+2. Copy all three files from [`Built DLLs`](./Built%20DLLs) into `BepInEx/plugins/ValheimAdminTool/`.
+   * Steam install: `Valheim/BepInEx/plugins/ValheimAdminTool/`
+   * Thunderstore / r2modman: your profile's `BepInEx/plugins/ValheimAdminTool/`
 3. Start Valheim **modded**.
 4. Wait until the **main menu**, then press **Del** to show or hide the window.
 
-To build from source instead, compile `ValheimTooler` and `ValheimToolerMod` as **Release | x64** against your local Valheim install, then copy the same three DLLs into that plugin folder. Point the Valheim assembly references in the `.csproj` files at your own game install before building.
+To build from source instead, compile `ValheimAdminTool` and `ValheimAdminToolMod` as **Release | x64** against your local Valheim install, then copy the same three DLLs into that plugin folder. Point the Valheim assembly references in the `.csproj` files at your own game install before building.
 
 Astropilot's installer/launcher still lives in this repo. For an old pre-1.0 build you can use [the original releases](https://github.com/Astropilot/ValheimTooler/releases). Those builds do **not** work on Valheim 1.0.
 
@@ -114,18 +114,18 @@ If an install breaks the game, use Steam's "Verify integrity of game files".
 
 A config file is created on first launch:
 
-* Launcher: next to `ValheimToolerLauncher.exe`
+* Launcher: next to `ValheimAdminToolLauncher.exe`
 * BepInEx: `BepInEx/config/valheimtooler_settings.cfg`
 
 You can change the toggle key (default Delete), whether the window starts visible, language, and feature shortcuts.
 
 ## Contributing
 
-This fork is open for issues and pull requests on [Haroziplove/ValheimTooler](https://github.com/Haroziplove/ValheimTooler). Please follow the editorconfig rules.
+This fork is open for issues and pull requests on [Haroziplove/ValheimAdminTool](https://github.com/Haroziplove/ValheimAdminTool). Please follow the editorconfig rules.
 
 ## Credits
 
-**Original project:** [ValheimTooler](https://github.com/Astropilot/ValheimTooler) by **Yohann MARTIN ([Astropilot](https://github.com/Astropilot))**, released under the MIT License. This fork keeps that license and exists only to keep the tool working on current Valheim.
+**Original project:** [ValheimAdminTool](https://github.com/Astropilot/ValheimTooler) by **Yohann MARTIN ([Astropilot](https://github.com/Astropilot))**, released under the MIT License. This fork keeps that license and exists only to keep the tool working on current Valheim.
 
 Credits from the original README:
 
