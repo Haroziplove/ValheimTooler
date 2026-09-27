@@ -336,6 +336,41 @@ namespace ValheimAdminTool.Core
             return s_suppressed.Contains("$" + key);
         }
 
+        public static bool ShouldBlockAutoLearn(string key)
+        {
+            if (IsSuppressed(key))
+            {
+                return true;
+            }
+
+            EnsureCatalog();
+            RecipeEntry entry = FindEntry(key);
+            return entry != null && (entry.manualOnly || !string.IsNullOrEmpty(entry.vendor));
+        }
+
+        private static RecipeEntry FindEntry(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
+
+            RecipeEntry entry;
+            if (s_catalogByKey.TryGetValue(key, out entry))
+            {
+                return entry;
+            }
+
+            if (key.StartsWith("$"))
+            {
+                s_catalogByKey.TryGetValue(key.Substring(1), out entry);
+                return entry;
+            }
+
+            s_catalogByKey.TryGetValue("$" + key, out entry);
+            return entry;
+        }
+
         public static string KeyFromRecipe(Recipe recipe)
         {
             if (recipe == null || recipe.m_item == null || recipe.m_item.m_itemData == null || recipe.m_item.m_itemData.m_shared == null)
@@ -528,7 +563,7 @@ namespace ValheimAdminTool.Core
             for (int i = 0; i < s_catalog.Count; i++)
             {
                 RecipeEntry entry = s_catalog[i];
-                if (entry.manualOnly || entry.materials == null)
+                if (entry.manualOnly || !string.IsNullOrEmpty(entry.vendor) || entry.materials == null)
                 {
                     continue;
                 }
@@ -926,7 +961,14 @@ namespace ValheimAdminTool.Core
             {
                 DiscoverBiomeMaterials(biome);
             }
-            Notify(Player.m_localPlayer, LearnKeys(keys));
+            int learned = LearnKeys(keys);
+            Player player = Player.m_localPlayer;
+            if (player != null && s_learnBiomeItems)
+            {
+                player.CallMethod("UpdateKnownRecipesList");
+                PersistKnowledge(player);
+            }
+            Notify(player, learned);
         }
 
         private static void DiscoverBiomeMaterials(RecipeBiome biome)
@@ -1540,7 +1582,11 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            if (ContainsSap(hay) || ContainsAny(hay, "blackforge_ext2", "vise", "vice", "hare", "jute", "bile"))
+            if (ContainsAny(hay, "blackcore", "black core", "ceramicplate", "ceramic plate", "ceramic", "shieldcore", "shield core", "proustite", "fiddlehead"))
+            {
+                entry.biome = RecipeBiome.Ashlands;
+            }
+            else if (ContainsSap(hay) || ContainsAny(hay, "blackforge_ext2", "vise", "vice", "hare", "jute", "bile", "magecap", "bloodclot", "blood clot", "blood_clot", "stuffedmushroom", "stuffed mushroom", "preptable", "preparationtable"))
             {
                 entry.biome = RecipeBiome.Mistlands;
             }
@@ -1556,11 +1602,15 @@ namespace ValheimAdminTool.Core
             {
                 entry.biome = RecipeBiome.Ashlands;
             }
+            else if (ContainsAny(hay, "entrails") && (entry.biome == RecipeBiome.Meadows || entry.biome == RecipeBiome.BlackForest || entry.biome == RecipeBiome.Special))
+            {
+                entry.biome = RecipeBiome.Swamp;
+            }
         }
 
         private static RecipeBiome ClassifyRecipe(Recipe recipe, string display)
         {
-            string station = recipe.m_craftingStation != null ? recipe.m_craftingStation.name : "";
+            string station = StationText(recipe.m_craftingStation);
             int level = recipe.m_minStationLevel;
             string text = RecipeText(recipe, display);
             return Classify(station, level, text);
@@ -1568,9 +1618,19 @@ namespace ValheimAdminTool.Core
 
         private static RecipeBiome ClassifyPiece(Piece piece, GameObject prefab, string display)
         {
-            string station = piece.m_craftingStation != null ? piece.m_craftingStation.name : "";
+            string station = piece.m_craftingStation != null ? StationText(piece.m_craftingStation) : "";
             string text = PieceText(piece, prefab) + " " + display;
             return Classify(station, 1, text);
+        }
+
+        private static string StationText(CraftingStation station)
+        {
+            if (station == null)
+            {
+                return "";
+            }
+
+            return station.name + " " + station.m_name;
         }
 
         private static string RecipeText(Recipe recipe, string display)
@@ -1660,11 +1720,11 @@ namespace ValheimAdminTool.Core
             {
                 return RecipeBiome.DeepNorth;
             }
-            if (ContainsAny(haystack, "flametal", "asksvin", "charred", "ashland", "volture", "morgen", "berserkir", "grausten", "sulfur", "bonemaw", "ashwood", "ember", "fader", "lavai", "putrid", "celestial"))
+            if (ContainsAny(haystack, "flametal", "asksvin", "charred", "ashland", "volture", "morgen", "berserkir", "grausten", "sulfur", "bonemaw", "ashwood", "ember", "fader", "lavai", "putrid", "celestial", "blackcore", "black core", "ceramicplate", "ceramic plate", "ceramic", "shieldcore", "shield core", "proustite", "fiddlehead", "askblod", "bloodstone", "iolite"))
             {
                 return RecipeBiome.Ashlands;
             }
-            if (ContainsSap(haystack) || ContainsAny(haystack, "eitr", "carapace", "mistland", "ygg", "dvergr", "seeker", "gjall", "softtissue", "royaljelly", "wisp", "blackmarble", "refinedeitr", "mistwalker", "feathercape", "feather_cape", "bile"))
+            if (ContainsSap(haystack) || ContainsAny(haystack, "eitr", "carapace", "mistland", "ygg", "dvergr", "seeker", "gjall", "softtissue", "royaljelly", "wisp", "blackmarble", "refinedeitr", "mistwalker", "feathercape", "feather_cape", "bile", "magecap", "bloodclot", "blood clot", "blood_clot", "hare", "jute", "mandible", "scalehide", "preptable", "prep_table", "preparationtable", "foodprep", "stuffedmushroom", "stuffed mushroom", "misthare", "blackforge", "galdr", "sapextractor"))
             {
                 return RecipeBiome.Mistlands;
             }
@@ -1680,11 +1740,11 @@ namespace ValheimAdminTool.Core
             {
                 return RecipeBiome.Mountains;
             }
-            if (ContainsAny(haystack, "iron", "rootarmor", "ancientbark", "ancient_bark", "guck", "withered", "abomination", "swamp", "turnip", "sunken", "draugr", "leech", "ironnail", "iron_nail"))
+            if (ContainsAny(haystack, "iron", "rootarmor", "ancientbark", "ancient_bark", "guck", "withered", "abomination", "swamp", "turnip", "sunken", "draugr", "leech", "ironnail", "iron_nail", "entrails", "bloodbag", "blood bag", "ooze", "sausage", "ironscrap", "witheredbone", "withered bone", "ancientroot", "blob"))
             {
                 return RecipeBiome.Swamp;
             }
-            if (ContainsAny(haystack, "bronze", "troll", "finewood", "copper", "tin", "corewood", "core_wood", "carrot", "greydwarf", "surtling", "bronzenail"))
+            if (ContainsAny(haystack, "bronze", "troll", "finewood", "copper", "tin", "corewood", "core_wood", "carrot", "greydwarf", "surtling", "bronzenail", "thistle", "queenbee", "queen bee"))
             {
                 return RecipeBiome.BlackForest;
             }
@@ -1694,7 +1754,7 @@ namespace ValheimAdminTool.Core
             {
                 return fromStation;
             }
-            if (ContainsAny(haystack, "flint", "leather", "deer", "boar", "neck", "antler", "crude", "meadow", "raspberry", "campfire", "wood", "stone"))
+            if (ContainsAny(haystack, "flint", "leather", "deer", "boar", "neck", "antler", "crude", "meadow", "raspberry", "blueberry", "honey", "mushroom", "dandelion", "rawmeat", "raw meat", "necktail", "neck tail", "deerhide", "deer hide", "resin", "campfire", "wood", "stone"))
             {
                 return RecipeBiome.Meadows;
             }
@@ -1781,6 +1841,10 @@ namespace ValheimAdminTool.Core
             if (name.Contains("stonecutter"))
             {
                 return RecipeBiome.BlackForest;
+            }
+            if (ContainsAny(name, "preptable", "prep_table", "preparationtable", "foodprep", "blackforge", "galdr", "sapextractor", "eitrrefinery"))
+            {
+                return RecipeBiome.Mistlands;
             }
 
             return RecipeBiome.Special;

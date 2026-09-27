@@ -25,7 +25,7 @@ namespace ValheimAdminTool.Patches
             }
 
             string key = RecipeManager.KeyFromRecipe(recipe);
-            return !RecipeManager.IsSuppressed(key);
+            return !RecipeManager.ShouldBlockAutoLearn(key);
         }
 
         private static void Postfix(Player __instance, Recipe recipe)
@@ -64,7 +64,7 @@ namespace ValheimAdminTool.Patches
             }
 
             string key = RecipeManager.KeyFromPiece(piece);
-            return !RecipeManager.IsSuppressed(key);
+            return !RecipeManager.ShouldBlockAutoLearn(key);
         }
 
         private static void Postfix(Player __instance, Piece piece)
