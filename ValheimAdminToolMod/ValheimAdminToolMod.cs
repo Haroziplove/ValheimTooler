@@ -14,7 +14,7 @@ namespace ValheimAdminToolMod
     {
         const string PluginGUID = "com.github.Haroziplove.ValheimAdminTool";
         const string PluginName = "ValheimAdminTool";
-        const string PluginVersion = "2.0.6.0";
+        const string PluginVersion = "2.0.6.3";
 
         private Harmony _harmony;
 

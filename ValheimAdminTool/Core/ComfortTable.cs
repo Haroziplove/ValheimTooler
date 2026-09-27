@@ -186,7 +186,7 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            var seen = new HashSet<string>();
+            var rows = new Dictionary<string, Row>();
             foreach (GameObject prefab in ZNetScene.instance.m_prefabs)
             {
                 if (prefab == null)
@@ -200,21 +200,20 @@ namespace ValheimAdminTool.Core
                     continue;
                 }
 
-                if (!seen.Add(piece.m_name))
-                {
-                    continue;
-                }
-
-                string display = PieceName(piece);
-                s_rows.Add(new Row
+                AddComfortRow(rows, new Row
                 {
                     header = false,
                     group = (int)piece.m_comfortGroup,
                     key = piece.m_name,
                     match = MatchKey(piece.m_name),
                     comfort = piece.m_comfort,
-                    text = display
+                    text = PieceName(piece)
                 });
+            }
+
+            foreach (Row row in rows.Values)
+            {
+                s_rows.Add(row);
             }
 
             s_rows.Sort(CompareRows);
@@ -224,6 +223,62 @@ namespace ValheimAdminTool.Core
             {
                 s_rect.position = ConfigManager.s_comfortTablePosition.Value;
             }
+        }
+
+        private static void AddComfortRow(Dictionary<string, Row> rows, Row row)
+        {
+            string key = row.match;
+            Row existing = null;
+            if (rows.TryGetValue(key, out existing))
+            {
+                if (PreferComfortRow(row, existing))
+                {
+                    rows[key] = row;
+                }
+
+                return;
+            }
+
+            string displayKey = null;
+            foreach (KeyValuePair<string, Row> pair in rows)
+            {
+                if (string.Equals(pair.Value.text, row.text, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    displayKey = pair.Key;
+                    existing = pair.Value;
+                    break;
+                }
+            }
+
+            if (displayKey != null)
+            {
+                if (PreferComfortRow(row, existing))
+                {
+                    rows.Remove(displayKey);
+                    rows[key] = row;
+                }
+
+                return;
+            }
+
+            rows[key] = row;
+        }
+
+        private static bool PreferComfortRow(Row candidate, Row current)
+        {
+            bool candidateGrouped = candidate.group != 0;
+            bool currentGrouped = current.group != 0;
+            if (candidateGrouped != currentGrouped)
+            {
+                return candidateGrouped;
+            }
+
+            if (candidate.comfort != current.comfort)
+            {
+                return candidate.comfort > current.comfort;
+            }
+
+            return candidate.key != null && (current.key == null || candidate.key.Length < current.key.Length);
         }
 
         private static bool GivesComfort(GameObject prefab, Piece piece)

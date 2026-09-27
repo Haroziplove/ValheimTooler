@@ -16,12 +16,13 @@ namespace ValheimAdminTool.Core
         private static float s_comfortRadius = -1f;
         private static float s_nextScan;
 
-        public static void Draw()
+        public static void Tick()
         {
             bool show = ConfigManager.s_comfortEsp != null && ConfigManager.s_comfortEsp.Value && Player.m_localPlayer != null && !Minimap.IsOpen();
             if (!show)
             {
                 s_nextScan = 0f;
+                s_winners.Clear();
                 SetRingCount(0);
                 return;
             }
@@ -33,8 +34,11 @@ namespace ValheimAdminTool.Core
             }
 
             UpdateRings();
+        }
 
-            if (Event.current == null || Event.current.type != EventType.Repaint)
+        public static void Draw()
+        {
+            if (s_winners.Count == 0 || Event.current == null || Event.current.type != EventType.Repaint)
             {
                 return;
             }
@@ -188,16 +192,22 @@ namespace ValheimAdminTool.Core
                 line.positionCount = 48;
                 line.shadowCastingMode = ShadowCastingMode.Off;
                 line.receiveShadows = false;
-                line.material = s_material;
+                line.sharedMaterial = s_material;
                 line.startColor = Color.white;
                 line.endColor = Color.white;
                 root.SetActive(false);
                 s_rings.Add(line);
             }
 
-            for (int i = count; i < s_rings.Count; i++)
+            while (s_rings.Count > count)
             {
-                s_rings[i].gameObject.SetActive(false);
+                int last = s_rings.Count - 1;
+                LineRenderer extra = s_rings[last];
+                s_rings.RemoveAt(last);
+                if (extra != null)
+                {
+                    UnityEngine.Object.Destroy(extra.gameObject);
+                }
             }
         }
 

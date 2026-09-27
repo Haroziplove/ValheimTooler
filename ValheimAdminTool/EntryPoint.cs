@@ -105,6 +105,7 @@ namespace ValheimAdminTool
             MiscHacks.Update();
             ESP.Update();
             TerrainShaper.Update();
+            ComfortEsp.Tick();
         }
 
         public void OnGUI()
