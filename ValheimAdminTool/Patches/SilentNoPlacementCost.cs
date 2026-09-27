@@ -40,9 +40,9 @@ namespace ValheimAdminTool.Patches
                 return TargetMethod() != null;
             }
 
-            private static bool Prefix(Player __instance, ref bool __result)
+            private static bool Prefix(Player __instance, Player.RequirementMode mode, ref bool __result)
             {
-                if (!SilentNoPlacement.IsActive(__instance) || !__instance.InPlaceMode())
+                if (!SilentNoPlacement.IsActive(__instance) || mode != Player.RequirementMode.CanBuild)
                 {
                     return true;
                 }
@@ -98,7 +98,7 @@ namespace ValheimAdminTool.Patches
 
             private static bool Prefix(Player __instance, bool discover, ref bool __result)
             {
-                if (!SilentNoPlacement.IsActive(__instance) || discover)
+                if (discover || !SilentNoPlacement.IsActive(__instance))
                 {
                     return true;
                 }
@@ -187,7 +187,7 @@ namespace ValheimAdminTool.Patches
                 if (buildPieces != null)
                 {
                     HashSet<string> knownRecipes = __instance.GetFieldValue<HashSet<string>>("m_knownRecipes");
-                    buildPieces.UpdateAvailable(knownRecipes, __instance, false, true);
+                    buildPieces.UpdateAvailable(knownRecipes, __instance, false, false);
                 }
 
                 __instance.CallMethod("SetupPlacementGhost");

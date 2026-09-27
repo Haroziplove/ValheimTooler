@@ -1,6 +1,6 @@
 # Valheim Tooler
 
-A BepInEx window for running a Valheim world from inside the game. Version 2.0.6.3 works with Valheim 1.0.16, the current game release.
+A BepInEx window for running a Valheim world from inside the game. Version 2.1.0.0 works with Valheim 1.0.16, the current game release.
 
 ## Hotkeys
 

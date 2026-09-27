@@ -39,12 +39,17 @@ namespace ValheimAdminTool.Core
         private static int s_lastRecipeCount = -1;
         private static int s_lastKnownCount = -1;
         private static int s_learnSeq;
+        private static bool s_learnBiomeItems = true;
 
         private static readonly List<RecipeEntry> s_catalog = new List<RecipeEntry>();
         private static readonly Dictionary<string, RecipeEntry> s_catalogByKey = new Dictionary<string, RecipeEntry>(StringComparer.Ordinal);
         private static readonly HashSet<string> s_selected = new HashSet<string>(StringComparer.Ordinal);
         private static readonly HashSet<string> s_suppressed = new HashSet<string>(StringComparer.Ordinal);
         private static readonly Dictionary<string, int> s_learnedSeq = new Dictionary<string, int>(StringComparer.Ordinal);
+        private static readonly List<string> s_vendorOrder = new List<string>();
+        private static readonly Dictionary<string, string> s_vendorLabel = new Dictionary<string, string>(StringComparer.Ordinal);
+        private static Dictionary<string, string> s_vendorByKey;
+        private static bool s_vendorsReady;
         private static List<RecipeEntry> s_visible = new List<RecipeEntry>();
 
         private static readonly RecipeBiome[] s_biomeOrder =
@@ -112,6 +117,10 @@ namespace ValheimAdminTool.Core
 
             GUILayout.Space(10);
             GUILayout.Label(VTLocalization.instance.Localize("$vt_recipe_biome_title"), InterfaceMaker.CustomSkin != null ? InterfaceMaker.CustomSkin.FindStyle("sectionTitle") : GUI.skin.label);
+            if (Controls.FeatureButton("$vt_recipe_biome_with_items", s_learnBiomeItems, FeatureMethod.Direct))
+            {
+                s_learnBiomeItems = !s_learnBiomeItems;
+            }
 
             const float rowHeight = 30f;
             const float gap = 8f;
@@ -132,6 +141,7 @@ namespace ValheimAdminTool.Core
                 GUILayout.Space(4);
             }
 
+            DrawVendorButtons(true);
             Controls.EndSection();
         }
 
@@ -192,6 +202,13 @@ namespace ValheimAdminTool.Core
                     Controls.SetHoverTooltip(selectTip);
                 }
                 GUILayout.Space(2);
+            }
+
+            if (s_vendorOrder.Count > 0)
+            {
+                GUILayout.Space(4);
+                GUILayout.Label(VTLocalization.instance.Localize("$vt_recipe_vendor_title"));
+                DrawVendorButtons(false);
             }
 
             GUILayout.Label(VTLocalization.instance.Localize("$vt_recipe_selected") + " " + s_selected.Count + " / " + s_visible.Count);
@@ -301,7 +318,22 @@ namespace ValheimAdminTool.Core
 
         public static bool IsSuppressed(string key)
         {
-            return !string.IsNullOrEmpty(key) && s_suppressed.Contains(key);
+            if (string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            if (s_suppressed.Contains(key))
+            {
+                return true;
+            }
+
+            if (key.StartsWith("$"))
+            {
+                return s_suppressed.Contains(key.Substring(1));
+            }
+
+            return s_suppressed.Contains("$" + key);
         }
 
         public static string KeyFromRecipe(Recipe recipe)
@@ -405,23 +437,159 @@ namespace ValheimAdminTool.Core
             }
 
             EnsureCatalog();
+            HashSet<string> materials = KnownMaterials(player);
+            SuppressQualified(recipes, materials);
             int count = recipes.Count;
-            foreach (string key in recipes)
-            {
-                s_suppressed.Add(key);
-                s_learnedSeq.Remove(key);
-            }
-            for (int i = 0; i < s_catalog.Count; i++)
-            {
-                s_suppressed.Add(s_catalog[i].key);
-            }
-
             recipes.Clear();
 
             s_selected.Clear();
             s_lastKnownCount = -1;
             PersistKnowledge(player);
+            recipes.Clear();
             Notify(player, count);
+        }
+
+        private static void SuppressKey(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return;
+            }
+
+            s_suppressed.Add(key);
+            s_learnedSeq.Remove(key);
+            if (key.StartsWith("$"))
+            {
+                string bare = key.Substring(1);
+                s_suppressed.Add(bare);
+                s_learnedSeq.Remove(bare);
+            }
+            else
+            {
+                s_suppressed.Add("$" + key);
+                s_learnedSeq.Remove("$" + key);
+            }
+        }
+
+        private static void SuppressQualified(HashSet<string> recipes, HashSet<string> materials)
+        {
+            foreach (string key in recipes)
+            {
+                SuppressKey(key);
+            }
+
+            for (int i = 0; i < s_catalog.Count; i++)
+            {
+                if (IngredientsKnown(s_catalog[i], materials))
+                {
+                    SuppressKey(s_catalog[i].key);
+                }
+            }
+        }
+
+        private static bool IngredientsKnown(RecipeEntry entry, HashSet<string> materials)
+        {
+            if (entry.materials == null)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < entry.materials.Count; i++)
+            {
+                string name = entry.materials[i];
+                if (string.IsNullOrEmpty(name) || SameMaterial(name, entry.key))
+                {
+                    continue;
+                }
+
+                if (materials == null || !MaterialKnown(materials, name))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static void AllowRecipesForNewMaterial(string material)
+        {
+            if (string.IsNullOrEmpty(material))
+            {
+                return;
+            }
+
+            HashSet<string> known = KnownMaterials(Player.m_localPlayer);
+            if (known != null && MaterialKnown(known, material))
+            {
+                return;
+            }
+
+            EnsureCatalog();
+            for (int i = 0; i < s_catalog.Count; i++)
+            {
+                RecipeEntry entry = s_catalog[i];
+                if (entry.manualOnly || entry.materials == null)
+                {
+                    continue;
+                }
+
+                for (int n = 0; n < entry.materials.Count; n++)
+                {
+                    if (SameMaterial(entry.materials[n], material))
+                    {
+                        ReleaseSuppressed(entry.key);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static void ReleaseSuppressed(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return;
+            }
+
+            s_suppressed.Remove(key);
+            if (key.StartsWith("$"))
+            {
+                s_suppressed.Remove(key.Substring(1));
+            }
+            else
+            {
+                s_suppressed.Remove("$" + key);
+            }
+        }
+
+        private static bool MaterialKnown(HashSet<string> materials, string name)
+        {
+            if (materials.Contains(name))
+            {
+                return true;
+            }
+
+            if (name.StartsWith("$"))
+            {
+                return materials.Contains(name.Substring(1));
+            }
+
+            return materials.Contains("$" + name);
+        }
+
+        private static bool SameMaterial(string a, string b)
+        {
+            return string.Equals(BareName(a), BareName(b), System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string BareName(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return "";
+            }
+
+            return key.StartsWith("$") ? key.Substring(1) : key;
         }
 
         private static void LearnAllRecipes()
@@ -435,57 +603,106 @@ namespace ValheimAdminTool.Core
             Notify(Player.m_localPlayer, LearnKeys(keys));
         }
 
-        private static void LearnBiome(RecipeBiome biome)
+        private static void DrawVendorButtons(bool learn)
+        {
+            EnsureCatalog();
+            if (s_vendorOrder.Count == 0)
+            {
+                return;
+            }
+
+            const float rowHeight = 30f;
+            const float gap = 8f;
+            string tipCode = learn ? "$vt_recipe_vendor_learn" : "$vt_recipe_vendor_select";
+            for (int i = 0; i < s_vendorOrder.Count; i += 2)
+            {
+                Rect row = GUILayoutUtility.GetRect(1f, rowHeight, GUILayout.ExpandWidth(true), GUILayout.Height(rowHeight));
+                float columnWidth = Mathf.Max(0f, (row.width - gap) * 0.5f);
+                Rect left = new Rect(row.x, row.y, columnWidth, row.height);
+                Rect right = new Rect(row.x + columnWidth + gap, row.y, columnWidth, row.height);
+                string leftId = s_vendorOrder[i];
+                if (learn)
+                {
+                    if (Controls.ActionButtonAt(left, VendorLabel(leftId), FeatureMethod.Direct, tipCode))
+                    {
+                        LearnVendor(leftId);
+                    }
+                }
+                else if (GUI.Button(left, new GUIContent(VendorLabel(leftId), Controls.Tip(tipCode))))
+                {
+                    SelectVisibleVendor(leftId);
+                }
+
+                if (i + 1 >= s_vendorOrder.Count)
+                {
+                    GUILayout.Space(4);
+                    continue;
+                }
+
+                string rightId = s_vendorOrder[i + 1];
+                if (learn)
+                {
+                    if (Controls.ActionButtonAt(right, VendorLabel(rightId), FeatureMethod.Direct, tipCode))
+                    {
+                        LearnVendor(rightId);
+                    }
+                }
+                else if (GUI.Button(right, new GUIContent(VendorLabel(rightId), Controls.Tip(tipCode))))
+                {
+                    SelectVisibleVendor(rightId);
+                }
+
+                GUILayout.Space(4);
+            }
+        }
+
+        private static void LearnVendor(string vendorId)
         {
             EnsureCatalog();
             List<string> keys = new List<string>();
             for (int i = 0; i < s_catalog.Count; i++)
             {
-                if (s_catalog[i].biome == biome)
+                if (s_catalog[i].vendor == vendorId && !s_catalog[i].manualOnly)
                 {
                     keys.Add(s_catalog[i].key);
                 }
             }
-            DiscoverBiomeMaterials(biome);
+
+            if (s_learnBiomeItems)
+            {
+                DiscoverVendorItems(vendorId);
+            }
+
             Notify(Player.m_localPlayer, LearnKeys(keys));
         }
 
-        private static void DiscoverBiomeMaterials(RecipeBiome biome)
+        private static void DiscoverVendorItems(string vendorId)
         {
             Player player = Player.m_localPlayer;
             HashSet<string> materials = KnownMaterials(player);
-            if (materials == null)
+            if (materials == null || s_vendorByKey == null)
             {
                 return;
             }
 
-            for (int i = 0; i < s_catalog.Count; i++)
+            foreach (KeyValuePair<string, string> pair in s_vendorByKey)
             {
-                RecipeEntry entry = s_catalog[i];
-                if (entry.biome != biome || entry.materials == null)
+                if (pair.Value == vendorId && !string.IsNullOrEmpty(pair.Key) && !pair.Key.ToLowerInvariant().Contains("mysterious"))
                 {
-                    continue;
-                }
-
-                for (int n = 0; n < entry.materials.Count; n++)
-                {
-                    if (!string.IsNullOrEmpty(entry.materials[n]))
-                    {
-                        materials.Add(entry.materials[n]);
-                    }
+                    materials.Add(pair.Key);
                 }
             }
 
             PersistKnowledge(player, false);
         }
 
-        private static void SelectVisibleBiome(RecipeBiome biome)
+        private static void SelectVisibleVendor(string vendorId)
         {
             bool allSelected = true;
             int matches = 0;
             for (int i = 0; i < s_visible.Count; i++)
             {
-                if (s_visible[i].biome != biome)
+                if (s_visible[i].vendor != vendorId)
                 {
                     continue;
                 }
@@ -504,7 +721,304 @@ namespace ValheimAdminTool.Core
 
             for (int i = 0; i < s_visible.Count; i++)
             {
-                if (s_visible[i].biome != biome)
+                if (s_visible[i].vendor != vendorId)
+                {
+                    continue;
+                }
+
+                if (allSelected)
+                {
+                    s_selected.Remove(s_visible[i].key);
+                }
+                else
+                {
+                    s_selected.Add(s_visible[i].key);
+                }
+            }
+        }
+
+        private static string VendorLabel(string vendorId)
+        {
+            string label;
+            if (vendorId != null && s_vendorLabel.TryGetValue(vendorId, out label) && !string.IsNullOrEmpty(label))
+            {
+                return label;
+            }
+
+            return vendorId;
+        }
+
+        private static void EnsureVendors()
+        {
+            if (s_vendorsReady || ZNetScene.instance == null || ZNetScene.instance.m_prefabs == null)
+            {
+                return;
+            }
+
+            s_vendorByKey = new Dictionary<string, string>(StringComparer.Ordinal);
+            s_vendorOrder.Clear();
+            s_vendorLabel.Clear();
+            foreach (GameObject prefab in ZNetScene.instance.m_prefabs)
+            {
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                Trader trader = prefab.GetComponent<Trader>();
+                if (trader == null)
+                {
+                    continue;
+                }
+
+                string id = prefab.name;
+                if (!s_vendorLabel.ContainsKey(id))
+                {
+                    string raw = string.IsNullOrEmpty(trader.m_name) ? prefab.name : trader.m_name;
+                    string label = Localization.instance != null ? Localization.instance.Localize(raw) : raw;
+                    if (string.IsNullOrEmpty(label) || label.StartsWith("$") || (label.Length > 2 && label[0] == '[' && label[label.Length - 1] == ']'))
+                    {
+                        label = prefab.name;
+                    }
+
+                    s_vendorLabel[id] = label;
+                    s_vendorOrder.Add(id);
+                }
+
+                if (trader.m_items != null)
+                {
+                    for (int i = 0; i < trader.m_items.Count; i++)
+                    {
+                        Trader.TradeItem trade = trader.m_items[i];
+                        RegisterVendorItem(id, trade != null ? trade.m_prefab : null);
+                    }
+                }
+
+                if (trader.m_useItems != null)
+                {
+                    for (int i = 0; i < trader.m_useItems.Count; i++)
+                    {
+                        Trader.TraderUseItem useItem = trader.m_useItems[i];
+                        RegisterVendorItem(id, useItem != null ? useItem.m_prefab : null);
+                    }
+                }
+            }
+
+            s_vendorsReady = true;
+        }
+
+        private static void RegisterVendorItem(string vendorId, ItemDrop drop)
+        {
+            if (drop == null)
+            {
+                return;
+            }
+
+            RememberVendor(vendorId, drop.name);
+            Piece ownPiece = drop.GetComponent<Piece>();
+            if (ownPiece != null)
+            {
+                RememberVendor(vendorId, ownPiece.m_name);
+            }
+
+            if (drop.m_itemData == null || drop.m_itemData.m_shared == null)
+            {
+                return;
+            }
+
+            RememberVendor(vendorId, drop.m_itemData.m_shared.m_name);
+            PieceTable table = drop.m_itemData.m_shared.m_buildPieces;
+            if (table == null || table.m_pieces == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < table.m_pieces.Count; i++)
+            {
+                GameObject piecePrefab = table.m_pieces[i];
+                if (piecePrefab == null)
+                {
+                    continue;
+                }
+
+                RememberVendor(vendorId, piecePrefab.name);
+                Piece piece = piecePrefab.GetComponent<Piece>();
+                if (piece != null)
+                {
+                    RememberVendor(vendorId, piece.m_name);
+                }
+            }
+        }
+
+        private static void RememberVendor(string vendorId, string key)
+        {
+            if (string.IsNullOrEmpty(key) || s_vendorByKey.ContainsKey(key))
+            {
+                return;
+            }
+
+            s_vendorByKey[key] = vendorId;
+            if (key.StartsWith("$"))
+            {
+                string bare = key.Substring(1);
+                if (!s_vendorByKey.ContainsKey(bare))
+                {
+                    s_vendorByKey[bare] = vendorId;
+                }
+            }
+            else if (!s_vendorByKey.ContainsKey("$" + key))
+            {
+                s_vendorByKey["$" + key] = vendorId;
+            }
+        }
+
+        private static string VendorFor(string key, string prefabName)
+        {
+            string vendor = VendorForKey(key);
+            if (vendor != null)
+            {
+                return vendor;
+            }
+
+            return VendorForKey(prefabName);
+        }
+
+        private static string VendorFor(string key)
+        {
+            return VendorForKey(key);
+        }
+
+        private static string VendorForKey(string key)
+        {
+            if (s_vendorByKey == null || string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
+
+            string vendor;
+            if (s_vendorByKey.TryGetValue(key, out vendor))
+            {
+                return vendor;
+            }
+
+            if (key.StartsWith("$"))
+            {
+                s_vendorByKey.TryGetValue(key.Substring(1), out vendor);
+                return vendor;
+            }
+
+            s_vendorByKey.TryGetValue("$" + key, out vendor);
+            return vendor;
+        }
+
+        private static void LearnBiome(RecipeBiome biome)
+        {
+            EnsureCatalog();
+            List<string> keys = new List<string>();
+            for (int i = 0; i < s_catalog.Count; i++)
+            {
+                if (s_catalog[i].biome == biome && string.IsNullOrEmpty(s_catalog[i].vendor) && !s_catalog[i].manualOnly)
+                {
+                    keys.Add(s_catalog[i].key);
+                }
+            }
+            if (s_learnBiomeItems)
+            {
+                DiscoverBiomeMaterials(biome);
+            }
+            Notify(Player.m_localPlayer, LearnKeys(keys));
+        }
+
+        private static void DiscoverBiomeMaterials(RecipeBiome biome)
+        {
+            Player player = Player.m_localPlayer;
+            HashSet<string> materials = KnownMaterials(player);
+            if (materials == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < s_catalog.Count; i++)
+            {
+                RecipeEntry entry = s_catalog[i];
+                if (entry.biome != biome || !string.IsNullOrEmpty(entry.vendor) || entry.manualOnly || entry.materials == null)
+                {
+                    continue;
+                }
+
+                for (int n = 0; n < entry.materials.Count; n++)
+                {
+                    if (!string.IsNullOrEmpty(entry.materials[n]))
+                    {
+                        materials.Add(entry.materials[n]);
+                    }
+                }
+            }
+
+            if (ObjectDB.instance != null && ObjectDB.instance.m_items != null)
+            {
+                foreach (GameObject prefab in ObjectDB.instance.m_items)
+                {
+                    if (prefab == null)
+                    {
+                        continue;
+                    }
+
+                    ItemDrop drop = prefab.GetComponent<ItemDrop>();
+                    if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null)
+                    {
+                        continue;
+                    }
+
+                    string name = drop.m_itemData.m_shared.m_name;
+                    if (string.IsNullOrEmpty(name))
+                    {
+                        continue;
+                    }
+
+                    if (VendorFor(name) != null || name.ToLowerInvariant().Contains("mysterious") || ContainsAny(name.ToLowerInvariant(), "barber", "ironpit", "iron_pit", "firepit_iron"))
+                    {
+                        continue;
+                    }
+
+                    string display = Localization.instance != null ? Localization.instance.Localize(name) : name;
+                    RecipeBiome itemBiome = Classify("none", 1, prefab.name + " " + name + " " + display);
+                    if (itemBiome == biome)
+                    {
+                        materials.Add(name);
+                    }
+                }
+            }
+
+            PersistKnowledge(player, false);
+        }
+
+        private static void SelectVisibleBiome(RecipeBiome biome)
+        {
+            bool allSelected = true;
+            int matches = 0;
+            for (int i = 0; i < s_visible.Count; i++)
+            {
+                if (s_visible[i].biome != biome || !string.IsNullOrEmpty(s_visible[i].vendor) || s_visible[i].manualOnly)
+                {
+                    continue;
+                }
+
+                matches++;
+                if (!s_selected.Contains(s_visible[i].key))
+                {
+                    allSelected = false;
+                }
+            }
+
+            if (matches == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < s_visible.Count; i++)
+            {
+                if (s_visible[i].biome != biome || !string.IsNullOrEmpty(s_visible[i].vendor) || s_visible[i].manualOnly)
                 {
                     continue;
                 }
@@ -642,8 +1156,7 @@ namespace ValheimAdminTool.Core
                 {
                     removed++;
                 }
-                s_suppressed.Add(key);
-                s_learnedSeq.Remove(key);
+                SuppressKey(key);
             }
 
             s_selected.Clear();
@@ -670,6 +1183,14 @@ namespace ValheimAdminTool.Core
                 }
 
                 s_suppressed.Remove(key);
+                if (key.StartsWith("$"))
+                {
+                    s_suppressed.Remove(key.Substring(1));
+                }
+                else
+                {
+                    s_suppressed.Remove("$" + key);
+                }
                 if (recipes.Add(key))
                 {
                     added++;
@@ -821,10 +1342,28 @@ namespace ValheimAdminTool.Core
 
         private static int CompareUnlocked(RecipeEntry a, RecipeEntry b)
         {
-            int biome = a.biome.CompareTo(b.biome);
-            if (biome != 0)
+            bool aVendor = !string.IsNullOrEmpty(a.vendor);
+            bool bVendor = !string.IsNullOrEmpty(b.vendor);
+            if (aVendor != bVendor)
             {
-                return biome;
+                return aVendor ? 1 : -1;
+            }
+
+            if (aVendor)
+            {
+                int vendor = string.Compare(VendorLabel(a.vendor), VendorLabel(b.vendor), StringComparison.OrdinalIgnoreCase);
+                if (vendor != 0)
+                {
+                    return vendor;
+                }
+            }
+            else
+            {
+                int biome = a.biome.CompareTo(b.biome);
+                if (biome != 0)
+                {
+                    return biome;
+                }
             }
 
             return string.Compare(a.displayName, b.displayName, StringComparison.OrdinalIgnoreCase);
@@ -845,7 +1384,8 @@ namespace ValheimAdminTool.Core
         private static void EnsureCatalog()
         {
             int recipeCount = ObjectDB.instance != null && ObjectDB.instance.m_recipes != null ? ObjectDB.instance.m_recipes.Count : 0;
-            if (s_catalog.Count > 0 && recipeCount == s_lastRecipeCount)
+            bool sceneReady = ZNetScene.instance != null && ZNetScene.instance.m_prefabs != null;
+            if (s_catalog.Count > 0 && recipeCount == s_lastRecipeCount && (s_vendorsReady || !sceneReady))
             {
                 return;
             }
@@ -857,6 +1397,7 @@ namespace ValheimAdminTool.Core
             s_catalog.Clear();
             s_catalogByKey.Clear();
             s_lastRecipeCount = recipeCount;
+            EnsureVendors();
 
             foreach (Recipe recipe in ObjectDB.instance.m_recipes)
             {
@@ -875,6 +1416,7 @@ namespace ValheimAdminTool.Core
                     displayName = display,
                     icon = icon,
                     biome = ClassifyRecipe(recipe, display),
+                    vendor = VendorFor(key, recipe.m_item != null ? recipe.m_item.name : null),
                     hasIcon = icon != GetPlaceholderIcon(),
                     materials = ItemNames(recipe.m_item, recipe.m_resources)
                 });
@@ -918,16 +1460,16 @@ namespace ValheimAdminTool.Core
                         continue;
                     }
 
-                    Piece piece = prefab.GetComponent<Piece>();
-                    if (piece == null || piece.m_icon == null)
-                    {
-                        continue;
-                    }
+                Piece piece = prefab.GetComponent<Piece>();
+                if (piece == null || piece.m_icon == null)
+                {
+                    continue;
+                }
 
-                    if (piecePrefabs.Contains(prefab) || IsSpecialText(PieceText(piece, prefab)))
-                    {
-                        piecePrefabs.Add(prefab);
-                    }
+                if (piecePrefabs.Contains(prefab) || IsSpecialText(PieceText(piece, prefab)))
+                {
+                    piecePrefabs.Add(prefab);
+                }
                 }
             }
 
@@ -948,6 +1490,7 @@ namespace ValheimAdminTool.Core
                     displayName = display,
                     icon = icon,
                     biome = ClassifyPiece(piece, prefab, display),
+                    vendor = VendorFor(key, prefab != null ? prefab.name : null),
                     hasIcon = icon != GetPlaceholderIcon(),
                     materials = ItemNames(null, piece.m_resources)
                 });
@@ -956,8 +1499,63 @@ namespace ValheimAdminTool.Core
 
         private static void AddEntry(RecipeEntry entry)
         {
+            StampGroup(entry);
             s_catalog.Add(entry);
             s_catalogByKey[entry.key] = entry;
+        }
+
+        private static void StampGroup(RecipeEntry entry)
+        {
+            System.Text.StringBuilder builder = new System.Text.StringBuilder();
+            builder.Append(entry.key).Append(' ').Append(entry.displayName);
+            if (entry.materials != null)
+            {
+                for (int i = 0; i < entry.materials.Count; i++)
+                {
+                    builder.Append(' ').Append(entry.materials[i]);
+                    AppendLocalized(builder, entry.materials[i]);
+                }
+            }
+
+            string hay = builder.ToString().ToLowerInvariant();
+            if (ContainsAny(hay, "mysterious"))
+            {
+                entry.manualOnly = true;
+                entry.vendor = null;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(entry.vendor) && ContainsAny(hay, "barber", "ironpit", "iron_pit", "firepit_iron", "ironfirepit", "iron fire pit", "iron firepit", "iron pit"))
+            {
+                entry.vendor = "Hildir";
+                if (!s_vendorLabel.ContainsKey("Hildir"))
+                {
+                    s_vendorLabel["Hildir"] = "Hildir";
+                    s_vendorOrder.Add("Hildir");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(entry.vendor))
+            {
+                return;
+            }
+
+            if (ContainsSap(hay) || ContainsAny(hay, "blackforge_ext2", "vise", "vice", "hare", "jute", "bile"))
+            {
+                entry.biome = RecipeBiome.Mistlands;
+            }
+            else if (ContainsAny(hay, "vile", "vilebone"))
+            {
+                entry.biome = RecipeBiome.Plains;
+            }
+            else if (ContainsAny(hay, "snowball", "snowlantern", "snow_lantern", "snow shovel", "snowshovel"))
+            {
+                entry.biome = RecipeBiome.DeepNorth;
+            }
+            else if (ContainsAny(hay, "pot_small_green", "pot_medium_green", "pot_large_green", "shieldgenerator"))
+            {
+                entry.biome = RecipeBiome.Ashlands;
+            }
         }
 
         private static RecipeBiome ClassifyRecipe(Recipe recipe, string display)
@@ -984,20 +1582,12 @@ namespace ValheimAdminTool.Core
                 : "";
             System.Text.StringBuilder builder = new System.Text.StringBuilder();
             builder.Append(prefab).Append(' ').Append(shared).Append(' ').Append(display);
+            AppendLocalized(builder, shared);
             if (recipe.m_resources != null)
             {
                 foreach (Piece.Requirement requirement in recipe.m_resources)
                 {
-                    if (requirement == null || requirement.m_resItem == null)
-                    {
-                        continue;
-                    }
-
-                    builder.Append(' ').Append(requirement.m_resItem.name);
-                    if (requirement.m_resItem.m_itemData != null && requirement.m_resItem.m_itemData.m_shared != null)
-                    {
-                        builder.Append(' ').Append(requirement.m_resItem.m_itemData.m_shared.m_name);
-                    }
+                    AppendRequirement(builder, requirement);
                 }
             }
 
@@ -1014,21 +1604,49 @@ namespace ValheimAdminTool.Core
             if (piece != null)
             {
                 builder.Append(' ').Append(piece.m_name);
+                AppendLocalized(builder, piece.m_name);
                 if (piece.m_resources != null)
                 {
                     foreach (Piece.Requirement requirement in piece.m_resources)
                     {
-                        if (requirement == null || requirement.m_resItem == null)
-                        {
-                            continue;
-                        }
-
-                        builder.Append(' ').Append(requirement.m_resItem.name);
+                        AppendRequirement(builder, requirement);
                     }
                 }
             }
 
             return builder.ToString();
+        }
+
+        private static void AppendRequirement(System.Text.StringBuilder builder, Piece.Requirement requirement)
+        {
+            if (requirement == null || requirement.m_resItem == null)
+            {
+                return;
+            }
+
+            builder.Append(' ').Append(requirement.m_resItem.name);
+            if (requirement.m_resItem.m_itemData == null || requirement.m_resItem.m_itemData.m_shared == null)
+            {
+                return;
+            }
+
+            string shared = requirement.m_resItem.m_itemData.m_shared.m_name;
+            builder.Append(' ').Append(shared);
+            AppendLocalized(builder, shared);
+        }
+
+        private static void AppendLocalized(System.Text.StringBuilder builder, string raw)
+        {
+            if (string.IsNullOrEmpty(raw) || Localization.instance == null)
+            {
+                return;
+            }
+
+            string shown = Localization.instance.Localize(raw);
+            if (!string.IsNullOrEmpty(shown) && !string.Equals(shown, raw, System.StringComparison.OrdinalIgnoreCase))
+            {
+                builder.Append(' ').Append(shown);
+            }
         }
 
         private static RecipeBiome Classify(string station, int level, string text)
@@ -1038,7 +1656,7 @@ namespace ValheimAdminTool.Core
             {
                 return RecipeBiome.Special;
             }
-            if (ContainsAny(haystack, "deepnorth", "deep_north", "deep north", "fimbul", "northlands"))
+            if (ContainsAny(haystack, "deepnorth", "deep_north", "deep north", "fimbul", "northlands", "bloodgold", "frostcore", "frostfoundry", "frostkiln", "frigid", "jotun", "elaking", "timberwood", "timber wood", "moose", "seal", "nornthread", "frozenfuel", "frozenking", "crownjewel", "jotunpuff", "jotunbane", "spicedeepnorth", "feastdeepnorth", "liquidfrost", "liquid core", "liquidcore", "liquid_core", "frostfire", "frostorb", "frostwood", "woodfrost", "orbofahri", "spiritcaller", "thunderblood", "stafficeshard", "icecube", "item_ice", "item_mold", "mold_", "mould", "barka", "gammeltroll", "gammel", "hexen", "krigen", "captive"))
             {
                 return RecipeBiome.DeepNorth;
             }
@@ -1046,7 +1664,7 @@ namespace ValheimAdminTool.Core
             {
                 return RecipeBiome.Ashlands;
             }
-            if (ContainsAny(haystack, "eitr", "carapace", "mistland", "ygg", "dvergr", "seeker", "gjall", "softtissue", "royaljelly", "wisp", "blackmarble", "refinedeitr", "mistwalker", "feathercape", "feather_cape"))
+            if (ContainsSap(haystack) || ContainsAny(haystack, "eitr", "carapace", "mistland", "ygg", "dvergr", "seeker", "gjall", "softtissue", "royaljelly", "wisp", "blackmarble", "refinedeitr", "mistwalker", "feathercape", "feather_cape", "bile"))
             {
                 return RecipeBiome.Mistlands;
             }
@@ -1054,7 +1672,7 @@ namespace ValheimAdminTool.Core
             {
                 return RecipeBiome.Ocean;
             }
-            if (ContainsAny(haystack, "blackmetal", "padded", "lox", "tar", "goblin", "fuling", "plains", "needle", "linen", "flax", "barley", "darkwood", "deathsquito", "bloodpudding"))
+            if (ContainsAny(haystack, "blackmetal", "padded", "lox", "tar", "goblin", "fuling", "plains", "needle", "linen", "flax", "barley", "darkwood", "deathsquito", "bloodpudding", "vile", "vilebone"))
             {
                 return RecipeBiome.Plains;
             }
@@ -1174,6 +1792,28 @@ namespace ValheimAdminTool.Core
                 "maypole", "midsummer", "yule", "xmas", "christmas", "halloween", "jackoturnip", "jacko",
                 "firecracker", "firework", "gift1", "gift2", "gift3", "mistletoe", "festive", "seasonal",
                 "treasurechest", "cargocrate", "yuletree", "xmastree", "xmas_tree", "christmasgift");
+        }
+
+        private static bool ContainsSap(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            int index = 0;
+            while ((index = text.IndexOf("sap", index, System.StringComparison.Ordinal)) >= 0)
+            {
+                bool sapling = text.Length >= index + 7 && string.Compare(text, index, "sapling", 0, 7, System.StringComparison.Ordinal) == 0;
+                if (!sapling)
+                {
+                    return true;
+                }
+
+                index += 7;
+            }
+
+            return false;
         }
 
         private static bool ContainsAny(string text, params string[] parts)
@@ -1304,6 +1944,8 @@ namespace ValheimAdminTool.Core
             public string displayName;
             public Texture icon;
             public RecipeBiome biome;
+            public string vendor;
+            public bool manualOnly;
             public bool hasIcon;
             public List<string> materials;
         }
