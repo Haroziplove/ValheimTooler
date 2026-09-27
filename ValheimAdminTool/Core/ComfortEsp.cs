@@ -11,10 +11,13 @@ namespace ValheimAdminTool.Core
     {
         private static readonly List<Piece> s_winners = new List<Piece>();
         private static readonly List<LineRenderer> s_rings = new List<LineRenderer>();
+        private static readonly List<float> s_ringRadius = new List<float>();
         private static Material s_material;
+        private static MaterialPropertyBlock s_colorBlock;
         private static GUIStyle s_label;
         private static float s_comfortRadius = -1f;
         private static float s_nextScan;
+        private const int RingSegments = 48;
 
         public static void Tick()
         {
@@ -23,7 +26,13 @@ namespace ValheimAdminTool.Core
             {
                 s_nextScan = 0f;
                 s_winners.Clear();
-                SetRingCount(0);
+                for (int i = 0; i < s_rings.Count; i++)
+                {
+                    if (s_rings[i] != null && s_rings[i].gameObject.activeSelf)
+                    {
+                        s_rings[i].gameObject.SetActive(false);
+                    }
+                }
                 return;
             }
 
@@ -79,7 +88,7 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            HashSet<Piece> pieces = ComfortPieces();
+            HashSet<Piece> pieces = GetComfortPieces();
             if (pieces == null)
             {
                 return;
@@ -91,7 +100,7 @@ namespace ValheimAdminTool.Core
             float limit = ComfortRadius();
             foreach (Piece piece in pieces)
             {
-                if (piece == null)
+                if (piece == null || !piece.gameObject.activeInHierarchy)
                 {
                     continue;
                 }
@@ -129,7 +138,7 @@ namespace ValheimAdminTool.Core
             }
         }
 
-        private static HashSet<Piece> ComfortPieces()
+        public static HashSet<Piece> GetComfortPieces()
         {
             FieldInfo field = typeof(Piece).GetField("s_allComfortPieces", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             if (field == null)
@@ -137,17 +146,53 @@ namespace ValheimAdminTool.Core
                 return null;
             }
 
-            return field.GetValue(null) as HashSet<Piece>;
+            HashSet<Piece> pieces = field.GetValue(null) as HashSet<Piece>;
+            if (pieces == null)
+            {
+                return null;
+            }
+
+            bool hasDead = false;
+            foreach (Piece piece in pieces)
+            {
+                if (piece == null)
+                {
+                    hasDead = true;
+                    break;
+                }
+            }
+
+            if (!hasDead)
+            {
+                return pieces;
+            }
+
+            HashSet<Piece> live = new HashSet<Piece>();
+            foreach (Piece piece in pieces)
+            {
+                if (piece != null)
+                {
+                    live.Add(piece);
+                }
+            }
+
+            field.SetValue(null, live);
+            return live;
         }
 
         private static void UpdateRings()
         {
             EnsureMaterial();
-            SetRingCount(s_winners.Count);
+            int count = s_winners.Count;
+            while (s_rings.Count < count)
+            {
+                s_rings.Add(CreateRing());
+                s_ringRadius.Add(-1f);
+            }
+
             float reach = ComfortRadius();
             float height = Player.m_localPlayer != null ? Player.m_localPlayer.transform.position.y + 0.05f : 0f;
-            const int segments = 48;
-            for (int i = 0; i < s_winners.Count; i++)
+            for (int i = 0; i < count; i++)
             {
                 Piece piece = s_winners[i];
                 LineRenderer ring = s_rings[i];
@@ -168,47 +213,54 @@ namespace ValheimAdminTool.Core
 
                 float radius = Mathf.Sqrt(flat);
                 ring.gameObject.SetActive(true);
-                Color color = ColorFor(piece);
-                ring.startColor = color;
-                ring.endColor = color;
-                for (int p = 0; p < segments; p++)
+                ring.transform.position = new Vector3(position.x, height, position.z);
+                ring.transform.localScale = new Vector3(radius, 1f, radius);
+                if (Mathf.Abs(s_ringRadius[i] - radius) > 0.05f)
                 {
-                    float angle = p * Mathf.PI * 2f / segments;
-                    ring.SetPosition(p, new Vector3(position.x + Mathf.Cos(angle) * radius, height, position.z + Mathf.Sin(angle) * radius));
+                    s_ringRadius[i] = radius;
+                    ring.widthMultiplier = 0.12f / radius;
+                }
+
+                if (s_colorBlock == null)
+                {
+                    s_colorBlock = new MaterialPropertyBlock();
+                }
+
+                s_colorBlock.SetColor("_Color", ColorFor(piece));
+                ring.SetPropertyBlock(s_colorBlock);
+            }
+
+            for (int i = count; i < s_rings.Count; i++)
+            {
+                if (s_rings[i] != null && s_rings[i].gameObject.activeSelf)
+                {
+                    s_rings[i].gameObject.SetActive(false);
                 }
             }
         }
 
-        private static void SetRingCount(int count)
+        private static LineRenderer CreateRing()
         {
-            while (s_rings.Count < count)
+            GameObject root = new GameObject("VT_ComfortRing");
+            UnityEngine.Object.DontDestroyOnLoad(root);
+            LineRenderer line = root.AddComponent<LineRenderer>();
+            line.useWorldSpace = false;
+            line.loop = true;
+            line.positionCount = RingSegments;
+            line.widthMultiplier = 0.12f;
+            line.shadowCastingMode = ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.sharedMaterial = s_material;
+            line.startColor = Color.white;
+            line.endColor = Color.white;
+            for (int p = 0; p < RingSegments; p++)
             {
-                GameObject root = new GameObject("VT_ComfortRing");
-                UnityEngine.Object.DontDestroyOnLoad(root);
-                LineRenderer line = root.AddComponent<LineRenderer>();
-                line.useWorldSpace = true;
-                line.loop = true;
-                line.widthMultiplier = 0.12f;
-                line.positionCount = 48;
-                line.shadowCastingMode = ShadowCastingMode.Off;
-                line.receiveShadows = false;
-                line.sharedMaterial = s_material;
-                line.startColor = Color.white;
-                line.endColor = Color.white;
-                root.SetActive(false);
-                s_rings.Add(line);
+                float angle = p * Mathf.PI * 2f / RingSegments;
+                line.SetPosition(p, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)));
             }
 
-            while (s_rings.Count > count)
-            {
-                int last = s_rings.Count - 1;
-                LineRenderer extra = s_rings[last];
-                s_rings.RemoveAt(last);
-                if (extra != null)
-                {
-                    UnityEngine.Object.Destroy(extra.gameObject);
-                }
-            }
+            root.SetActive(false);
+            return line;
         }
 
         private static void EnsureLabel()

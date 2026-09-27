@@ -463,8 +463,7 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            FieldInfo field = typeof(Piece).GetField("s_allComfortPieces", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-            HashSet<Piece> pieces = field != null ? field.GetValue(null) as HashSet<Piece> : null;
+            HashSet<Piece> pieces = ComfortEsp.GetComfortPieces();
             if (pieces == null)
             {
                 return;
