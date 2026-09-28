@@ -121,6 +121,7 @@ namespace ValheimAdminTool
 
             HandleToggleHotkey();
             HandlePassThroughHotkey();
+            ReleaseTextFocusWhenLeaving();
             Controls.PrepareTooltipPass();
 
             Matrix4x4 previousMatrix = GUI.matrix;
@@ -131,6 +132,7 @@ namespace ValheimAdminTool
                 {
                     _valheimToolerRect = GUILayout.Window(1001, _valheimToolerRect, ValheimAdminToolWindow, VTLocalization.instance.Localize($"$vt_main_title (v{_version})"), GUILayout.Height(10), GUILayout.MinWidth(860));
                     s_mainWindowRect = _valheimToolerRect;
+                    ApplyPendingZoom();
 
                     if (s_showItemGiver)
                     {
@@ -174,6 +176,31 @@ namespace ValheimAdminTool
         public static bool IsToolInteractive()
         {
             return s_showMainWindow && !s_passThroughInput;
+        }
+
+        public static bool IsTypingInTool()
+        {
+            return IsToolInteractive() && GUIUtility.keyboardControl != 0;
+        }
+
+        private static void ReleaseTextFocusWhenLeaving()
+        {
+            Event ev = Event.current;
+            if (ev == null || GUIUtility.keyboardControl == 0)
+            {
+                return;
+            }
+
+            bool clickedOutside = ev.type == EventType.MouseDown && !IsPointerOverTool();
+            bool escape = ev.type == EventType.KeyDown && ev.keyCode == KeyCode.Escape;
+            if (clickedOutside || escape || !IsToolInteractive())
+            {
+                GUIUtility.keyboardControl = 0;
+                if (escape)
+                {
+                    ev.Use();
+                }
+            }
         }
 
         public static bool ShouldBlockCameraZoom()
@@ -345,6 +372,42 @@ namespace ValheimAdminTool
             GUI.DragWindow(new Rect(34, 0, Mathf.Max(0f, s_mainWindowRect.width - 100f), 32));
         }
 
+        private static bool s_zoomPending;
+        private static float s_zoomDelta;
+        private static Vector2 s_zoomAnchor;
+
+        // The window callback's rect is overwritten by GUILayout.Window, so the move is applied
+        // after the window returns.
+        private static void QueueZoom(float delta, Vector2 buttonCenterInWindow)
+        {
+            s_zoomPending = true;
+            s_zoomDelta = delta;
+            s_zoomAnchor = buttonCenterInWindow;
+        }
+
+        // Keep the clicked zoom button under the cursor: its screen position is
+        // (window + anchor) * scale, so solve for the new window position at the new scale.
+        private void ApplyPendingZoom()
+        {
+            if (!s_zoomPending)
+            {
+                return;
+            }
+
+            s_zoomPending = false;
+            float oldScale = ConfigManager.UiScale;
+            float newScale = Mathf.Clamp(oldScale + s_zoomDelta, 0.6f, 1.8f);
+            if (Mathf.Approximately(oldScale, newScale))
+            {
+                return;
+            }
+
+            Vector2 screenAnchor = (_valheimToolerRect.position + s_zoomAnchor) * oldScale;
+            _valheimToolerRect.position = screenAnchor / newScale - s_zoomAnchor;
+            s_mainWindowRect = _valheimToolerRect;
+            ConfigManager.s_uiScale.Value = newScale;
+        }
+
         private static void DrawZoomButtons()
         {
             GUIStyle style = InterfaceMaker.CustomSkin != null ? InterfaceMaker.CustomSkin.button : GUI.skin.button;
@@ -354,11 +417,11 @@ namespace ValheimAdminTool
             string zoomIn = Controls.Tip("$vt_ui_zoom_in");
             if (GUI.Button(minus, new GUIContent("-", zoomOut), style))
             {
-                ConfigManager.s_uiScale.Value = Mathf.Clamp(ConfigManager.UiScale - 0.1f, 0.6f, 1.8f);
+                QueueZoom(-0.1f, minus.center);
             }
             if (GUI.Button(plus, new GUIContent("+", zoomIn), style))
             {
-                ConfigManager.s_uiScale.Value = Mathf.Clamp(ConfigManager.UiScale + 0.1f, 0.6f, 1.8f);
+                QueueZoom(0.1f, plus.center);
             }
             if (Event.current != null && Event.current.type == EventType.Repaint)
             {

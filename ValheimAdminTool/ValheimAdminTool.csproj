@@ -183,6 +183,7 @@
     <Compile Include="Patches\InventoryNoWeightLimit.cs" />
     <Compile Include="Patches\NoPlacementCostRepair.cs" />
     <Compile Include="Patches\SilentNoPlacementCost.cs" />
+    <Compile Include="Patches\BlockGameKeysWhileTyping.cs" />
     <Compile Include="Patches\DisableInputWhenInterfaceIsShowed.cs" />
     <Compile Include="Patches\BlockCameraZoom.cs" />
     <Compile Include="Patches\RecipeLearnLog.cs" />

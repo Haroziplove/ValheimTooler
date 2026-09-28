@@ -408,7 +408,9 @@ namespace ValheimAdminTool.UI
             }
 
             s_tooltipText = tip;
-            s_tooltipScreenPos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
+            // The real cursor position. GUIToScreenPoint drifts inside scroll views and under the
+            // UI-scale matrix, which put item giver and recipe grid tooltips in odd places.
+            s_tooltipScreenPos = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
         }
 
         public static void NoteHoverTooltip(string tip)
@@ -587,6 +589,16 @@ namespace ValheimAdminTool.UI
         private static GUIStyle s_radiusMarkStyle;
         private static GUIStyle s_closeButtonStyle;
         private static GUISkin s_closeButtonSkin;
+
+        private static readonly int s_toggleHint = "Toggle".GetHashCode();
+
+        // Off-screen grid cells skip drawing but must still take the control ID GUI.Toggle would take.
+        // Otherwise the Layout pass and the click pass number controls differently, and any popup
+        // placed after the grid loses its selection.
+        public static void SkipToggle(Rect rect)
+        {
+            GUIUtility.GetControlID(s_toggleHint, FocusType.Passive, rect);
+        }
 
         public static GUIStyle CloseButtonStyle()
         {

@@ -570,11 +570,35 @@ namespace ValheimAdminTool.Core
             Rect plus = new Rect(s_rect.xMax - 34f, s_rect.y + 5f, 26f, 22f);
             if (GUI.Button(minus, "-", style))
             {
-                AdjustScale(-0.1f);
+                ScaleAround(-0.1f, minus.center);
             }
             if (GUI.Button(plus, "+", style))
             {
-                AdjustScale(0.1f);
+                ScaleAround(0.1f, plus.center);
+            }
+        }
+
+        // Keep the clicked button under the cursor. Screen position = rect-space point * scale.
+        private static void ScaleAround(float delta, Vector2 buttonCenter)
+        {
+            if (ConfigManager.s_comfortTableScale == null)
+            {
+                return;
+            }
+
+            float oldScale = Scale;
+            float newScale = Mathf.Clamp(oldScale + delta, 0.6f, 1.8f);
+            if (Mathf.Approximately(oldScale, newScale))
+            {
+                return;
+            }
+
+            Vector2 offset = buttonCenter - s_rect.position;
+            s_rect.position = buttonCenter * oldScale / newScale - offset;
+            ConfigManager.s_comfortTableScale.Value = newScale;
+            if (ConfigManager.s_comfortTablePosition != null)
+            {
+                ConfigManager.s_comfortTablePosition.Value = s_rect.position;
             }
         }
 

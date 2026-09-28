@@ -285,6 +285,7 @@ namespace ValheimAdminTool.Core
                 Rect cellRect = new Rect(col * cell, row * cell, cell, cell);
                 if (!cellRect.Overlaps(visible))
                 {
+                    Controls.SkipToggle(cellRect);
                     continue;
                 }
 
