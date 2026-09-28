@@ -183,15 +183,15 @@ namespace ValheimAdminTool.Core
                     {
                         foreach (MineRock5 mineRock5 in mineRock5s)
                         {
+                            if (!InEspRadius(mineRock5.transform.position))
+                                continue;
+
                             string name = mineRock5.GetHoverText().ToLower();
 
                             if (name.Contains("rock") || name.Length == 0)
                                 continue;
 
-                            if (InEspRadius(mineRock5.transform.position))
-                            {
-                                s_mineRock5s.Add(mineRock5);
-                            }
+                            s_mineRock5s.Add(mineRock5);
                         }
                     }
 
@@ -201,8 +201,11 @@ namespace ValheimAdminTool.Core
                     {
                         foreach (Destructible destructible in destructibles)
                         {
+                            if (!InEspRadius(destructible.transform.position))
+                                continue;
+
                             HoverText component = destructible.GetComponent<HoverText>();
-                            if (component == null)
+                            if (component == null || component.m_text == null)
                                 continue;
                             string text = component.m_text.ToLower();
 
@@ -211,10 +214,7 @@ namespace ValheimAdminTool.Core
                                 continue;
                             }
 
-                            if (InEspRadius(destructible.transform.position))
-                            {
-                                s_depositsDestructible.Add(destructible);
-                            }
+                            s_depositsDestructible.Add(destructible);
                         }
                     }
                 }
@@ -239,9 +239,16 @@ namespace ValheimAdminTool.Core
             return !ConfigManager.s_espRadiusEnabled.Value || distance <= ConfigManager.ActionRadius;
         }
 
+        private static GUIStyle s_labelStyle;
+
         public static void DisplayGUI()
         {
-            if (Minimap.IsOpen())
+            if (!(s_showPlayerESP || s_showMonsterESP || s_showPickableESP || s_showDroppedESP || s_showDepositESP))
+            {
+                return;
+            }
+
+            if (Event.current == null || Event.current.type != EventType.Repaint || Minimap.IsOpen())
             {
                 return;
             }
@@ -251,7 +258,11 @@ namespace ValheimAdminTool.Core
             if (mainCamera != null && Player.m_localPlayer != null)
             {
                 var main = mainCamera;
-                var labelSkin = new GUIStyle(InterfaceMaker.CustomSkin.label);
+                if (s_labelStyle == null)
+                {
+                    s_labelStyle = new GUIStyle(InterfaceMaker.CustomSkin.label);
+                }
+                var labelSkin = s_labelStyle;
 
                 if (ESP.s_showPlayerESP || ESP.s_showMonsterESP)
                 {
@@ -357,7 +368,8 @@ namespace ValheimAdminTool.Core
 
                         if (vector.z > -1)
                         {
-                            string name = depositDestructible.GetComponent<HoverText>().GetHoverName();
+                            HoverText hover = depositDestructible.GetComponent<HoverText>();
+                            string name = hover != null ? hover.GetHoverName() : "";
                             string espLabel = $"{name} [{(int)vector.z}]";
 
                             GUI.Label(new Rect((int)vector.x - 5, Screen.height - vector.y - 5, 150, 40), espLabel, labelSkin);

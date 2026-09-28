@@ -40,6 +40,11 @@ namespace ValheimAdminTool.Core
         private static List<TPTarget> s_tpTargets = null;
         private static List<TPTarget> s_tpTargetsFiltered = null;
         private static List<Player> s_players = null;
+        private static readonly UI.CachedOptions s_playerNames = new UI.CachedOptions();
+        private static readonly UI.CachedOptions s_powerNames = new UI.CachedOptions();
+        private static readonly UI.CachedOptions s_skillNames = new UI.CachedOptions();
+        private static readonly UI.CachedOptions s_levelNames = new UI.CachedOptions();
+        private static readonly UI.CachedOptions s_targetNames = new UI.CachedOptions();
 
         private static readonly List<Skills.SkillType> s_skills = new List<Skills.SkillType>();
         private static readonly List<string> s_levels = new List<string>();
@@ -395,14 +400,14 @@ namespace ValheimAdminTool.Core
                         GUILayout.BeginHorizontal();
                         {
                             UI.Controls.FieldLabel("$vt_player_power_name");
-                            s_guardianPowerIdx = RGUI.SelectionPopup(s_guardianPowerIdx, s_guardianPowers.Keys.ToArray());
+                            s_guardianPowerIdx = RGUI.SelectionPopup(s_guardianPowerIdx, s_powerNames.Get(s_guardianPowers.Keys, key => key));
                         }
                         GUILayout.EndHorizontal();
 
                         GUILayout.BeginHorizontal();
                         {
                             UI.Controls.FieldLabel("$vt_player_target");
-                            s_guardianPowerTargetIdx = RGUI.SelectionPopup(s_guardianPowerTargetIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
+                            s_guardianPowerTargetIdx = RGUI.SelectionPopup(s_guardianPowerTargetIdx, s_playerNames.Get(s_players, p => p.GetPlayerName()));
                         }
                         GUILayout.EndHorizontal();
 
@@ -428,14 +433,14 @@ namespace ValheimAdminTool.Core
                         GUILayout.BeginHorizontal();
                         {
                             UI.Controls.FieldLabel("$vt_player_skill_name");
-                            s_skillNameIdx = RGUI.SelectionPopup(s_skillNameIdx, s_skills.Select(skill => skill.ToString()).ToArray());
+                            s_skillNameIdx = RGUI.SelectionPopup(s_skillNameIdx, s_skillNames.Get(s_skills, skill => skill.ToString()));
                         }
                         GUILayout.EndHorizontal();
 
                         GUILayout.BeginHorizontal();
                         {
                             UI.Controls.FieldLabel("$vt_player_skill_level");
-                            s_skillLevelIdx = RGUI.SelectionPopup(s_skillLevelIdx, s_levels.ToArray());
+                            s_skillLevelIdx = RGUI.SelectionPopup(s_skillLevelIdx, s_levelNames.Get(s_levels, level => level));
                         }
                         GUILayout.EndHorizontal();
 
@@ -477,7 +482,7 @@ namespace ValheimAdminTool.Core
                         {
                             UI.Controls.FieldLabel("$vt_player_teleport_player_source");
 
-                            s_teleportSourceIdx = RGUI.SelectionPopup(s_teleportSourceIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
+                            s_teleportSourceIdx = RGUI.SelectionPopup(s_teleportSourceIdx, s_playerNames.Get(s_players, p => p.GetPlayerName()));
                         }
                         GUILayout.EndHorizontal();
 
@@ -485,7 +490,7 @@ namespace ValheimAdminTool.Core
                         {
                             UI.Controls.FieldLabel("$vt_player_teleport_target");
 
-                            s_teleportTargetIdx = RGUI.SearchableSelectionPopup(s_teleportTargetIdx, s_tpTargetsFiltered?.Select(t => t.ToString()).ToArray(), ref s_teleportTargetSearchTerms);
+                            s_teleportTargetIdx = RGUI.SearchableSelectionPopup(s_teleportTargetIdx, s_targetNames.Get(s_tpTargetsFiltered, t => t.ToString()), ref s_teleportTargetSearchTerms);
                             SearchTeleportTarget();
                         }
                         GUILayout.EndHorizontal();
@@ -540,7 +545,7 @@ namespace ValheimAdminTool.Core
                         {
                             UI.Controls.FieldLabel("$vt_player_heal_player");
 
-                            s_healTargetIdx = RGUI.SelectionPopup(s_healTargetIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
+                            s_healTargetIdx = RGUI.SelectionPopup(s_healTargetIdx, s_playerNames.Get(s_players, p => p.GetPlayerName()));
                         }
                         GUILayout.EndHorizontal();
 

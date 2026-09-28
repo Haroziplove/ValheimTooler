@@ -21,11 +21,28 @@ namespace ValheimAdminTool.UI
         private static System.Action s_confirmAction;
         private static Rect s_confirmRect;
 
-        public static void BeginSection(string titleCode)
+        public static void BeginSection(string titleCode, string helpCode = null)
         {
             GUILayout.Space(10);
-            GUILayout.Label(VTLocalization.instance.Localize(titleCode), StyleOrDefault("sectionTitle"));
+            if (string.IsNullOrEmpty(helpCode))
+            {
+                GUILayout.Label(VTLocalization.instance.Localize(titleCode), StyleOrDefault("sectionTitle"));
+            }
+            else
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(VTLocalization.instance.Localize(titleCode), StyleOrDefault("sectionTitle"), GUILayout.ExpandWidth(false));
+                HelpMark(helpCode);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
             GUILayout.BeginVertical(GUI.skin.box, GUILayout.ExpandWidth(true));
+        }
+
+        public static void HelpMark(string textCode)
+        {
+            GUILayout.Label("?", StyleOrDefault("infoButton"), GUILayout.Width(20f), GUILayout.Height(20f));
+            NoteHoverTooltip(VTLocalization.instance.Localize(textCode));
         }
 
         public static void EndSection()
@@ -147,9 +164,32 @@ namespace ValheimAdminTool.UI
 
         public static bool HasConfirmDialog => s_confirmAction != null;
 
-        public static bool IsPointerOverConfirm(Vector2 guiMouse)
+        // The dialog is modal: while it is open, and until the click that closed it is released,
+        // no mouse input may reach the game.
+        public static bool ConfirmBlocksInput
         {
-            return s_confirmAction != null && s_confirmRect.Contains(guiMouse);
+            get
+            {
+                if (s_confirmAction != null)
+                {
+                    return true;
+                }
+
+                if (s_confirmReleasePending && !Input.GetMouseButton(0) && !Input.GetMouseButton(1) && !Input.GetMouseButton(2))
+                {
+                    s_confirmReleasePending = false;
+                }
+
+                return s_confirmReleasePending;
+            }
+        }
+
+        private static bool s_confirmReleasePending;
+
+        private static void CloseConfirm()
+        {
+            s_confirmAction = null;
+            s_confirmReleasePending = true;
         }
 
         public static void DrawConfirmDialog()
@@ -162,7 +202,7 @@ namespace ValheimAdminTool.UI
             Event ev = Event.current;
             if (ev != null && ev.type == EventType.KeyDown && ev.keyCode == KeyCode.Escape)
             {
-                s_confirmAction = null;
+                CloseConfirm();
                 ev.Use();
                 return;
             }
@@ -183,12 +223,12 @@ namespace ValheimAdminTool.UI
             if (GUILayout.Button(VTLocalization.instance.Localize("$vt_confirm_yes"), GUILayout.Width(120), GUILayout.Height(28)))
             {
                 System.Action action = s_confirmAction;
-                s_confirmAction = null;
+                CloseConfirm();
                 action?.Invoke();
             }
             if (GUILayout.Button(VTLocalization.instance.Localize("$vt_confirm_no"), GUILayout.Width(120), GUILayout.Height(28)))
             {
-                s_confirmAction = null;
+                CloseConfirm();
             }
             GUILayout.EndHorizontal();
         }
@@ -239,13 +279,22 @@ namespace ValheimAdminTool.UI
                 text += " :";
             }
 
-            GUIStyle style = new GUIStyle(GUI.skin.label);
-            style.wordWrap = false;
-            style.stretchWidth = false;
-            style.clipping = TextClipping.Overflow;
-            GUILayout.Label(new GUIContent(text, tip), style, GUILayout.ExpandWidth(false));
+            if (s_fieldLabelStyle == null || s_fieldLabelSkin != GUI.skin)
+            {
+                s_fieldLabelSkin = GUI.skin;
+                s_fieldLabelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    wordWrap = false,
+                    stretchWidth = false,
+                    clipping = TextClipping.Overflow
+                };
+            }
+            GUILayout.Label(new GUIContent(text, tip), s_fieldLabelStyle, GUILayout.ExpandWidth(false));
             NoteHoverTooltip(tip);
         }
+
+        private static GUIStyle s_fieldLabelStyle;
+        private static GUISkin s_fieldLabelSkin;
 
         public static void HoverLabel(string labelCode, GUIStyle style = null, params GUILayoutOption[] options)
         {
@@ -468,6 +517,20 @@ namespace ValheimAdminTool.UI
             return tip;
         }
 
+        public static void RadiusNote(string text, string hoverAction = null)
+        {
+            string tip = Tip("$vt_action_radius_mark");
+            GUILayout.BeginHorizontal();
+            RadiusMark(22f);
+            GUILayout.Label(new GUIContent(text, tip), GUILayout.MinHeight(22f));
+            NoteHoverTooltip(tip);
+            if (hoverAction != null)
+            {
+                NoteHoverAction(hoverAction);
+            }
+            GUILayout.EndHorizontal();
+        }
+
         private static void RadiusMark(float rowHeight)
         {
             if (s_radiusMarkStyle == null)
@@ -522,6 +585,25 @@ namespace ValheimAdminTool.UI
 
         private static Texture2D s_radiusCircle;
         private static GUIStyle s_radiusMarkStyle;
+        private static GUIStyle s_closeButtonStyle;
+        private static GUISkin s_closeButtonSkin;
+
+        public static GUIStyle CloseButtonStyle()
+        {
+            if (s_closeButtonStyle == null || s_closeButtonSkin != GUI.skin)
+            {
+                s_closeButtonSkin = GUI.skin;
+                s_closeButtonStyle = new GUIStyle(GUI.skin.button)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 16,
+                    fontStyle = FontStyle.Bold,
+                    padding = new RectOffset(0, 0, 0, 0)
+                };
+            }
+
+            return s_closeButtonStyle;
+        }
 
         private static string MethodLabel(FeatureMethod method)
         {

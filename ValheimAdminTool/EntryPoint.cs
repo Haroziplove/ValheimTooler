@@ -34,6 +34,7 @@ namespace ValheimAdminTool
         };
 
         private string _version;
+        private string[] _toolbarLabels;
 
         public void Start()
         {
@@ -106,6 +107,12 @@ namespace ValheimAdminTool
             ESP.Update();
             TerrainShaper.Update();
             ComfortEsp.Tick();
+            ConfigManager.FlushInternal();
+        }
+
+        public void OnApplicationQuit()
+        {
+            ConfigManager.FlushInternalNow();
         }
 
         public void OnGUI()
@@ -306,9 +313,13 @@ namespace ValheimAdminTool
             GUILayout.Space(4);
 
             GUIStyle toolbarStyle = InterfaceMaker.CustomSkin != null ? InterfaceMaker.CustomSkin.FindStyle("toolbar") : null;
+            if (_toolbarLabels == null)
+            {
+                _toolbarLabels = _toolbarChoices.Select(choice => VTLocalization.instance.Localize(choice)).ToArray();
+            }
             _windowToolbar = (WindowToolbar)GUILayout.Toolbar(
                 (int)_windowToolbar,
-                _toolbarChoices.Select(choice => VTLocalization.instance.Localize(choice)).ToArray(),
+                _toolbarLabels,
                 toolbarStyle != null ? toolbarStyle : GUI.skin.button,
                 GUILayout.Height(32));
 
@@ -376,6 +387,9 @@ namespace ValheimAdminTool
             {
                 ConfigManager.s_actionRadius.Value = next;
             }
+
+            GUILayout.Space(4);
+            TerrainShaper.DrawShapeToggle();
         }
 
         public static bool IsPointerOverTool()
@@ -383,6 +397,11 @@ namespace ValheimAdminTool
             if (!IsToolInteractive())
             {
                 return false;
+            }
+
+            if (Controls.ConfirmBlocksInput)
+            {
+                return true;
             }
 
             Vector2 screenMouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
@@ -408,7 +427,7 @@ namespace ValheimAdminTool
                 return true;
             }
 
-            if (Controls.IsPointerOverTooltip(mouse) || Controls.IsPointerOverConfirm(mouse))
+            if (Controls.IsPointerOverTooltip(mouse))
             {
                 return true;
             }

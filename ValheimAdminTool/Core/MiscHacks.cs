@@ -23,6 +23,7 @@ namespace ValheimAdminTool.Core
         private static bool s_isShoutMessage = false;
 
         private static List<Player> s_players = null;
+        private static readonly UI.CachedOptions s_playerNames = new UI.CachedOptions();
 
         private static float s_updateTimer = 0f;
         private static readonly float s_updateTimerInterval = 1.5f;
@@ -78,7 +79,7 @@ namespace ValheimAdminTool.Core
                         GUILayout.BeginHorizontal();
                         {
                             UI.Controls.FieldLabel("$vt_misc_damage_player");
-                            s_playerDamageIdx = RGUI.SelectionPopup(s_playerDamageIdx, s_players?.Select(p => p.GetPlayerName()).ToArray());
+                            s_playerDamageIdx = RGUI.SelectionPopup(s_playerDamageIdx, s_playerNames.Get(s_players, p => p.GetPlayerName()));
                         }
                         GUILayout.EndHorizontal();
 
@@ -112,7 +113,7 @@ namespace ValheimAdminTool.Core
                     }
                     UI.Controls.EndSection();
 
-                    UI.Controls.BeginSection("$vt_misc_map_title");
+                    UI.Controls.BeginSection("$vt_misc_map_title", "$vt_player_minimap_hint");
                     {
                         if (UI.Controls.ActionButton("$vt_misc_clear_deaths", FeatureMethod.Direct))
                         {
@@ -152,7 +153,6 @@ namespace ValheimAdminTool.Core
 
                         ConfigManager.s_cheatMinimapIndicators.Value = UI.Controls.LabeledToggle("$vt_misc_cheat_indicators", ConfigManager.s_cheatMinimapIndicators.Value);
 
-                        UI.Controls.Hint("$vt_player_minimap_hint");
                         if (UI.Controls.ActionButton("$vt_player_explore_minimap", FeatureMethod.Direct))
                         {
                             UI.Controls.AskConfirm("$vt_player_explore_minimap", "$vt_player_explore_minimap_confirm", () =>
@@ -258,10 +258,11 @@ namespace ValheimAdminTool.Core
                         }
 
                         ConfigManager.s_espRadiusEnabled.Value = UI.Controls.LabeledToggle("$vt_misc_radius_enable", ConfigManager.s_espRadiusEnabled.Value, true);
-                        ConfigManager.s_comfortEsp.Value = UI.Controls.LabeledToggle("$vt_comfort_esp", ConfigManager.s_comfortEsp.Value);
                         UI.Controls.NoteHoverAction("$vt_misc_radius_enable");
                     }
                     UI.Controls.EndSection();
+
+                    ComfortEsp.DrawSection();
                 }
                 GUILayout.EndVertical();
             }
@@ -359,6 +360,12 @@ namespace ValheimAdminTool.Core
                 return false;
             }
 
+            float radius = ConfigManager.ActionRadius;
+            if (global::Utils.DistanceXZ(Player.m_localPlayer.transform.position, destructible.transform.position) > radius)
+            {
+                return false;
+            }
+
             if (destructible.GetComponent<PinnedObject>() != null)
             {
                 return false;
@@ -372,12 +379,6 @@ namespace ValheimAdminTool.Core
 
             string text = component.m_text != null ? component.m_text.ToLower() : "";
             if (!text.Contains("deposit") && !text.Contains("piece_mudpile"))
-            {
-                return false;
-            }
-
-            float radius = ConfigManager.ActionRadius;
-            if (global::Utils.DistanceXZ(Player.m_localPlayer.transform.position, destructible.transform.position) > radius)
             {
                 return false;
             }

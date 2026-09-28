@@ -202,9 +202,13 @@ namespace ValheimAdminTool.Core
             Game.instance.SavePlayerProfile(false, false);
         }
 
+        private static float s_hudScanAt;
+        private static bool s_hudInventoryCheated;
+
         public static void ForceGroundRefresh()
         {
             s_groundScanAt = 0f;
+            s_hudScanAt = 0f;
         }
 
         public static bool HasInventoryCheated()
@@ -230,15 +234,19 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            if (Player.m_localPlayer == null)
+            if (Player.m_localPlayer == null || Event.current == null || Event.current.type != EventType.Repaint)
             {
                 return;
             }
 
             bool inventoryOpen = InventoryGui.IsVisible();
-            bool inventoryCheated = HasInventoryCheated();
+            if (Time.unscaledTime >= s_hudScanAt)
+            {
+                s_hudScanAt = Time.unscaledTime + 0.5f;
+                s_hudInventoryCheated = HasInventoryCheated();
+            }
+            bool inventoryCheated = s_hudInventoryCheated;
             bool containerCheated = inventoryOpen && HasContainerCheated();
-            bool drops = HasNearbyCheatedDrops();
 
             if (inventoryOpen && (inventoryCheated || containerCheated))
             {
@@ -267,6 +275,7 @@ namespace ValheimAdminTool.Core
             }
 
             bool minimapRed = inventoryCheated && !inventoryOpen;
+            bool drops = HasNearbyCheatedDrops();
             if (!minimapRed && !drops)
             {
                 return;

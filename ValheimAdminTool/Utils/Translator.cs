@@ -51,7 +51,40 @@ namespace ValheimAdminTool.Utils
             }
             
         }
+        // Every visible control localizes its label and tip on each IMGUI event, so keep the results.
+        // Only short fixed strings are cached, and the cache is capped so dynamic text cannot grow it.
+        private readonly Dictionary<string, string> m_localized = new Dictionary<string, string>(System.StringComparer.Ordinal);
+        private const int MaxCachedLength = 96;
+        private const int MaxCacheEntries = 4096;
+
         public string Localize(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text ?? "";
+            }
+
+            bool cacheable = text.Length <= MaxCachedLength && text.IndexOf("KEY_", System.StringComparison.Ordinal) < 0;
+            string cached;
+            if (cacheable && m_localized.TryGetValue(text, out cached))
+            {
+                return cached;
+            }
+
+            string result = LocalizeUncached(text);
+            if (cacheable)
+            {
+                if (m_localized.Count >= MaxCacheEntries)
+                {
+                    m_localized.Clear();
+                }
+                m_localized[text] = result;
+            }
+
+            return result;
+        }
+
+        private string LocalizeUncached(string text)
         {
             StringBuilder stringBuilder = new StringBuilder();
             int num = 0;
@@ -124,11 +157,13 @@ namespace ValheimAdminTool.Utils
         {
             m_translations.Remove(key);
             m_translations.Add(key, text);
+            m_localized.Clear();
         }
 
         private void Clear()
         {
             m_translations.Clear();
+            m_localized.Clear();
         }
 
         public bool SetupLanguage(string language)

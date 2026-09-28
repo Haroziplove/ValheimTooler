@@ -164,12 +164,12 @@ namespace ValheimAdminTool.Core
                 s_crafterFilled = true;
             }
 
-            GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-            labelStyle.normal.textColor = Color.white;
-
             GUILayout.Space(6);
-            string[] categories = s_categoryKeys.Select(key => VTLocalization.instance.Localize(key)).ToArray();
-            s_categoryIdx = GUILayout.SelectionGrid(s_categoryIdx, categories, 5, InterfaceMaker.CustomSkin.GetStyle("toolbar"));
+            if (s_categoryLabels == null)
+            {
+                s_categoryLabels = s_categoryKeys.Select(key => VTLocalization.instance.Localize(key)).ToArray();
+            }
+            s_categoryIdx = GUILayout.SelectionGrid(s_categoryIdx, s_categoryLabels, 5, InterfaceMaker.CustomSkin.GetStyle("toolbar"));
 
             s_searchTerms = GUILayout.TextField(s_searchTerms, GUILayout.MinHeight(26));
             FilterItems();
@@ -249,14 +249,7 @@ namespace ValheimAdminTool.Core
                 }
             }
 
-            GUIStyle closeStyle = new GUIStyle(GUI.skin.button)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 16,
-                fontStyle = FontStyle.Bold,
-                padding = new RectOffset(0, 0, 0, 0)
-            };
-            if (GUI.Button(new Rect(s_itemGiverRect.width - 36, 6, 26, 26), "X", closeStyle))
+            if (GUI.Button(new Rect(s_itemGiverRect.width - 36, 6, 26, 26), "X", Controls.CloseButtonStyle()))
             {
                 EntryPoint.s_showItemGiver = false;
             }
@@ -280,13 +273,24 @@ namespace ValheimAdminTool.Core
             Rect visible = new Rect(s_itemGiverScrollPosition.x, s_itemGiverScrollPosition.y, view.width, view.height);
             Vector2 mouse = Event.current.mousePosition;
 
+            if (s_cellContent == null)
+            {
+                s_cellContent = new GUIContent();
+            }
+
             for (int i = 0; i < count; i++)
             {
                 int col = i % columns;
                 int row = i / columns;
                 Rect cellRect = new Rect(col * cell, row * cell, cell, cell);
+                if (!cellRect.Overlaps(visible))
+                {
+                    continue;
+                }
+
                 GUIContent contentItem = s_itemsGUIFiltered[i];
-                if (GUI.Toggle(cellRect, s_selectedItem == i, new GUIContent(contentItem.image), cellStyle))
+                s_cellContent.image = contentItem.image;
+                if (GUI.Toggle(cellRect, s_selectedItem == i, s_cellContent, cellStyle))
                 {
                     s_selectedItem = i;
                 }
@@ -305,6 +309,10 @@ namespace ValheimAdminTool.Core
             GUI.EndScrollView();
         }
 
+        private static string[] s_categoryLabels;
+        private static GUIContent s_cellContent;
+        private static string[][] s_qualityOptions = new string[0][];
+
         private static string[] BuildQualityOptions()
         {
             int maxQuality = 1;
@@ -317,10 +325,20 @@ namespace ValheimAdminTool.Core
                 }
             }
 
-            string[] qualities = new string[maxQuality];
-            for (int i = 0; i < maxQuality; i++)
+            if (maxQuality >= s_qualityOptions.Length)
             {
-                qualities[i] = (i + 1).ToString();
+                Array.Resize(ref s_qualityOptions, maxQuality + 1);
+            }
+
+            string[] qualities = s_qualityOptions[maxQuality];
+            if (qualities == null)
+            {
+                qualities = new string[maxQuality];
+                for (int i = 0; i < maxQuality; i++)
+                {
+                    qualities[i] = (i + 1).ToString();
+                }
+                s_qualityOptions[maxQuality] = qualities;
             }
             return qualities;
         }

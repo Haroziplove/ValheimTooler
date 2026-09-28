@@ -136,6 +136,38 @@ namespace ValheimAdminTool.Utils
 
             s_settingsFile.Save();
             s_internalFile.Save();
+
+            s_internalFile.SaveOnConfigSet = false;
+            s_internalFile.SettingChanged += (sender, args) =>
+            {
+                s_internalDirty = true;
+                s_internalChangedAt = Time.unscaledTime;
+            };
+        }
+
+        private static bool s_internalDirty;
+        private static float s_internalChangedAt;
+
+        // Window positions, sliders, and toggles change many times while dragging. Write the file once
+        // the mouse is released and nothing has changed for half a second.
+        public static void FlushInternal()
+        {
+            if (!s_internalDirty || Input.GetMouseButton(0) || Time.unscaledTime - s_internalChangedAt < 0.5f)
+            {
+                return;
+            }
+
+            s_internalDirty = false;
+            s_internalFile.Save();
+        }
+
+        public static void FlushInternalNow()
+        {
+            if (s_internalDirty)
+            {
+                s_internalDirty = false;
+                s_internalFile.Save();
+            }
         }
     }
 }

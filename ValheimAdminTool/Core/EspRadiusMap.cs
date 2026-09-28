@@ -16,6 +16,11 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
+            if (Event.current == null || Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
             if (!Minimap.IsOpen() && GameUiBlocksMinimapOverlay())
             {
                 return;
@@ -112,9 +117,11 @@ namespace ValheimAdminTool.Core
             return new Vector2(Mathf.Lerp(rect.xMin, rect.xMax, u), Mathf.Lerp(rect.yMin, rect.yMax, v));
         }
 
+        private static readonly Vector3[] s_corners = new Vector3[4];
+
         private static Rect ScreenRect(RectTransform transform)
         {
-            Vector3[] corners = new Vector3[4];
+            Vector3[] corners = s_corners;
             transform.GetWorldCorners(corners);
             Vector2 bottomLeft = RectTransformUtility.WorldToScreenPoint(null, corners[0]);
             Vector2 topRight = RectTransformUtility.WorldToScreenPoint(null, corners[2]);

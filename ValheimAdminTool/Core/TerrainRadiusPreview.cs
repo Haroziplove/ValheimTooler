@@ -116,7 +116,7 @@ namespace ValheimAdminTool.Core
             s_material = CreateDashMaterial();
             if (s_material != null)
             {
-                s_line.material = s_material;
+                s_line.sharedMaterial = s_material;
             }
 
             s_line.startColor = Color.white;
@@ -218,24 +218,26 @@ namespace ValheimAdminTool.Core
             }
 
             float start = Player.m_localPlayer.transform.position.y + 1.4f;
-            RaycastHit[] hits = Physics.RaycastAll(new Vector3(pos.x, start, pos.z), Vector3.down, 4f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            int count = Physics.RaycastNonAlloc(new Vector3(pos.x, start, pos.z), Vector3.down, s_hits, 4f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             float best = float.MinValue;
             bool found = false;
-            for (int i = 0; i < hits.Length; i++)
+            for (int i = 0; i < count; i++)
             {
-                if (hits[i].normal.y < 0.45f || hits[i].point.y > start)
+                if (s_hits[i].normal.y < 0.45f || s_hits[i].point.y > start)
                 {
                     continue;
                 }
 
-                if (hits[i].point.y > best)
+                if (s_hits[i].point.y > best)
                 {
-                    best = hits[i].point.y;
+                    best = s_hits[i].point.y;
                     found = true;
                 }
             }
 
             return found ? best + 0.08f : fallback;
         }
+
+        private static readonly RaycastHit[] s_hits = new RaycastHit[16];
     }
 }

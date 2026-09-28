@@ -489,7 +489,7 @@ namespace ValheimAdminTool.Core
             }
         }
 
-        private static string GroupName(int group)
+        public static string GroupName(int group)
         {
             switch (group)
             {

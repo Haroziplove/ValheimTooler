@@ -13,6 +13,8 @@ namespace ValheimAdminTool.Core
         private static float s_depth = 1f;
         private static float s_strength = 0.01f;
         private static TerrainModifier.PaintType s_paintType = TerrainModifier.PaintType.Dirt;
+        private static TerrainModifier.PaintType[] s_paintTypes;
+        private static string[] s_paintTypeNames;
 
         public static float Radius => ConfigManager.ActionRadius;
 
@@ -57,7 +59,7 @@ namespace ValheimAdminTool.Core
 
         public static bool IsPreviewHover(string action)
         {
-            return action == "$vt_action_radius"
+            return action == "$vt_terrainshaper_area"
                 || action == "$vt_terrainshaper_shape"
                 || action == "$vt_terrainshaper_action_level"
                 || action == "$vt_terrainshaper_action_lower"
@@ -71,6 +73,8 @@ namespace ValheimAdminTool.Core
         {
             UI.Controls.BeginSection("$vt_terrainshaper_settings");
             {
+                UI.Controls.RadiusNote(VTLocalization.instance.Localize("$vt_terrainshaper_area") + " " + Radius.ToString("0.0") + " m, " + VTLocalization.instance.Localize(Ground.square ? "$vt_terrainshaper_shape_square" : "$vt_terrainshaper_shape_circle"), "$vt_terrainshaper_area");
+
                 GUILayout.BeginHorizontal();
                 {
                     GUILayout.Label(VTLocalization.instance.Localize("$vt_terrainshaper_depth (") + s_depth.ToString("F2") + ")", GUILayout.ExpandWidth(false));
@@ -84,14 +88,6 @@ namespace ValheimAdminTool.Core
                     s_strength = GUILayout.HorizontalSlider(s_strength, 0.001f, 0.1f, GUILayout.ExpandWidth(true));
                 }
                 GUILayout.EndHorizontal();
-
-                string shapeTip = VTLocalization.instance.Localize("$vt_terrainshaper_shape_tip");
-                if (GUILayout.Button(new GUIContent(UI.Utils.ToggleButtonLabelCustom("$vt_terrainshaper_shape", Ground.square, "$vt_terrainshaper_shape_square", "$vt_terrainshaper_shape_circle", ConfigManager.s_terrainShapeShortcut.Value), shapeTip), GUILayout.MinHeight(28)))
-                {
-                    ActionToggleTerrainShape();
-                }
-                UI.Controls.NoteHoverTooltip(shapeTip);
-                UI.Controls.NoteHoverAction("$vt_terrainshaper_shape");
             }
             UI.Controls.EndSection();
 
@@ -127,13 +123,17 @@ namespace ValheimAdminTool.Core
                 {
                     UI.Controls.FieldLabel("$vt_terrainshaper_paint_type");
 
-                    var enumValues = Enum.GetValues(typeof(TerrainModifier.PaintType)).Cast<object>().ToList();
-                    var idx = enumValues.IndexOf(s_paintType);
-                    var valueNames = enumValues.Select(value => value.ToString()).ToArray();
-
-                    idx = RGUI.SelectionPopup(idx, valueNames);
-
-                    s_paintType = (TerrainModifier.PaintType)enumValues.ElementAtOrDefault(idx);
+                    if (s_paintTypes == null)
+                    {
+                        s_paintTypes = (TerrainModifier.PaintType[])Enum.GetValues(typeof(TerrainModifier.PaintType));
+                        s_paintTypeNames = s_paintTypes.Select(value => value.ToString()).ToArray();
+                    }
+                    int idx = Array.IndexOf(s_paintTypes, s_paintType);
+                    idx = RGUI.SelectionPopup(idx, s_paintTypeNames);
+                    if (idx >= 0 && idx < s_paintTypes.Length)
+                    {
+                        s_paintType = s_paintTypes[idx];
+                    }
                 }
                 GUILayout.EndHorizontal();
 
@@ -172,6 +172,18 @@ namespace ValheimAdminTool.Core
                 GUILayout.EndHorizontal();
             }
             UI.Controls.EndSection();
+        }
+
+        public static void DrawShapeToggle()
+        {
+            string shapeTip = UI.Controls.Tip("$vt_terrainshaper_shape");
+            string label = UI.Utils.ToggleButtonLabelCustom("$vt_terrainshaper_shape", Ground.square, "$vt_terrainshaper_shape_square", "$vt_terrainshaper_shape_circle", ConfigManager.s_terrainShapeShortcut.Value);
+            if (GUILayout.Button(new GUIContent(label, shapeTip), GUILayout.MinHeight(26)))
+            {
+                ActionToggleTerrainShape();
+            }
+            UI.Controls.NoteHoverTooltip(shapeTip);
+            UI.Controls.NoteHoverAction("$vt_terrainshaper_shape");
         }
 
         private static void ActionToggleTerrainShape(bool sendNotification = false)

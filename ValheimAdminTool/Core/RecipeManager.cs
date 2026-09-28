@@ -53,6 +53,7 @@ namespace ValheimAdminTool.Core
         private static bool s_vendorsReady;
         private static List<RecipeEntry> s_visible = new List<RecipeEntry>();
 
+        private static readonly GUIContent s_cellContent = new GUIContent();
         private static MethodInfo s_addKnownRecipe;
         private static MethodInfo s_addKnownPiece;
         private static MethodInfo s_updateKnownRecipes;
@@ -99,8 +100,7 @@ namespace ValheimAdminTool.Core
 
         public static void DisplaySection()
         {
-            Controls.BeginSection("$vt_recipe_title");
-            Controls.Hint("$vt_recipe_hint");
+            Controls.BeginSection("$vt_recipe_title", "$vt_recipe_hint");
 
             if (Controls.ActionButton("$vt_recipe_forget_items", FeatureMethod.Direct))
             {
@@ -802,14 +802,7 @@ namespace ValheimAdminTool.Core
                 Controls.AskConfirm("$vt_recipe_title", "$vt_recipe_forget_selected_confirm", ForgetSelected);
             }
 
-            GUIStyle closeStyle = new GUIStyle(GUI.skin.button)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 16,
-                fontStyle = FontStyle.Bold,
-                padding = new RectOffset(0, 0, 0, 0)
-            };
-            if (GUI.Button(new Rect(s_windowRect.width - 36, 6, 26, 26), "X", closeStyle))
+            if (GUI.Button(new Rect(s_windowRect.width - 36, 6, 26, 26), "X", Controls.CloseButtonStyle()))
             {
                 EntryPoint.s_showRecipeManager = false;
             }
@@ -882,7 +875,8 @@ namespace ValheimAdminTool.Core
                 }
 
                 bool on = s_selected.Contains(entry.key);
-                bool next = GUI.Toggle(cellRect, on, new GUIContent(entry.icon), cellStyle);
+                s_cellContent.image = entry.icon;
+                bool next = GUI.Toggle(cellRect, on, s_cellContent, cellStyle);
                 if (next != on)
                 {
                     if (next)

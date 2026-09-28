@@ -12,27 +12,36 @@ namespace ValheimAdminTool.Core
         private static readonly List<Piece> s_winners = new List<Piece>();
         private static readonly List<LineRenderer> s_rings = new List<LineRenderer>();
         private static readonly List<float> s_ringRadius = new List<float>();
+        private static readonly List<Color> s_ringColor = new List<Color>();
         private static Material s_material;
         private static MaterialPropertyBlock s_colorBlock;
         private static GUIStyle s_label;
         private static float s_comfortRadius = -1f;
         private static float s_nextScan;
+        private static float s_tableUntil;
+        private static int s_comfortLevel;
         private const int RingSegments = 48;
+
+        public static IList<Piece> Winners => s_winners;
+
+        public static int ComfortLevel => s_comfortLevel;
+
+        // Called while the Comfort section is on screen so the table stays live without the ESP.
+        public static void KeepScanning()
+        {
+            s_tableUntil = Time.unscaledTime + 1f;
+        }
+
+        private static bool ShowEsp => ConfigManager.s_comfortEsp != null && ConfigManager.s_comfortEsp.Value && !Minimap.IsOpen();
 
         public static void Tick()
         {
-            bool show = ConfigManager.s_comfortEsp != null && ConfigManager.s_comfortEsp.Value && Player.m_localPlayer != null && !Minimap.IsOpen();
-            if (!show)
+            bool scan = Player.m_localPlayer != null && (ShowEsp || Time.unscaledTime < s_tableUntil);
+            if (!scan)
             {
                 s_nextScan = 0f;
                 s_winners.Clear();
-                for (int i = 0; i < s_rings.Count; i++)
-                {
-                    if (s_rings[i] != null && s_rings[i].gameObject.activeSelf)
-                    {
-                        s_rings[i].gameObject.SetActive(false);
-                    }
-                }
+                HideRings(0);
                 return;
             }
 
@@ -40,14 +49,33 @@ namespace ValheimAdminTool.Core
             {
                 s_nextScan = Time.unscaledTime + 0.6f;
                 RefreshWinners();
+                s_comfortLevel = SE_Rested.CalculateComfortLevel(Player.m_localPlayer);
             }
 
-            UpdateRings();
+            if (ShowEsp)
+            {
+                UpdateRings();
+            }
+            else
+            {
+                HideRings(0);
+            }
+        }
+
+        private static void HideRings(int from)
+        {
+            for (int i = from; i < s_rings.Count; i++)
+            {
+                if (s_rings[i] != null && s_rings[i].gameObject.activeSelf)
+                {
+                    s_rings[i].gameObject.SetActive(false);
+                }
+            }
         }
 
         public static void Draw()
         {
-            if (s_winners.Count == 0 || Event.current == null || Event.current.type != EventType.Repaint)
+            if (!ShowEsp || s_winners.Count == 0 || Event.current == null || Event.current.type != EventType.Repaint)
             {
                 return;
             }
@@ -136,11 +164,92 @@ namespace ValheimAdminTool.Core
             {
                 s_winners.Add(piece);
             }
+
+            s_rows.Clear();
+            for (int i = 0; i < s_winners.Count; i++)
+            {
+                Piece piece = s_winners[i];
+                s_rows.Add(new TableRow
+                {
+                    name = Localization.instance != null ? Localization.instance.Localize(piece.m_name) : piece.m_name,
+                    group = (int)piece.m_comfortGroup == 0 ? "—" : ComfortTable.GroupName((int)piece.m_comfortGroup),
+                    comfort = piece.GetComfort(),
+                    color = ColorFor(piece)
+                });
+            }
+            s_rows.Sort((a, b) => b.comfort != a.comfort ? b.comfort.CompareTo(a.comfort) : string.Compare(a.name, b.name, System.StringComparison.OrdinalIgnoreCase));
         }
+
+        private struct TableRow
+        {
+            public string name;
+            public string group;
+            public int comfort;
+            public Color color;
+        }
+
+        private static readonly List<TableRow> s_rows = new List<TableRow>();
+        private static GUIStyle s_cellLeft;
+        private static GUIStyle s_cellRight;
+        private static GUISkin s_cellSkin;
+
+        public static void DrawSection()
+        {
+            KeepScanning();
+            UI.Controls.BeginSection("$vt_misc_comfort_title", "$vt_misc_comfort_help");
+            ConfigManager.s_comfortEsp.Value = UI.Controls.LabeledToggle("$vt_comfort_esp", ConfigManager.s_comfortEsp.Value);
+
+            if (s_cellLeft == null || s_cellSkin != GUI.skin)
+            {
+                s_cellSkin = GUI.skin;
+                s_cellLeft = new GUIStyle(GUI.skin.label) { wordWrap = false, clipping = TextClipping.Clip };
+                s_cellRight = new GUIStyle(s_cellLeft) { alignment = TextAnchor.MiddleRight, fontStyle = FontStyle.Bold };
+            }
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_comfort_item"), s_cellLeft, GUILayout.ExpandWidth(true));
+            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_comfort_group"), s_cellLeft, GUILayout.Width(110f));
+            GUILayout.Label("+", s_cellRight, GUILayout.Width(36f));
+            GUILayout.EndHorizontal();
+
+            if (s_rows.Count == 0)
+            {
+                GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_comfort_none"), s_cellLeft);
+            }
+
+            Color previous = GUI.contentColor;
+            for (int i = 0; i < s_rows.Count; i++)
+            {
+                TableRow row = s_rows[i];
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = row.color;
+                GUILayout.Label(row.name, s_cellLeft, GUILayout.ExpandWidth(true));
+                GUI.contentColor = previous;
+                GUILayout.Label(row.group, s_cellLeft, GUILayout.Width(110f));
+                GUILayout.Label(row.comfort.ToString(), s_cellRight, GUILayout.Width(36f));
+                GUILayout.EndHorizontal();
+            }
+            GUI.contentColor = previous;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(VTLocalization.instance.Localize("$vt_misc_comfort_total"), s_cellRight, GUILayout.ExpandWidth(true));
+            GUILayout.Label(s_comfortLevel.ToString(), s_cellRight, GUILayout.Width(36f));
+            GUILayout.EndHorizontal();
+            UI.Controls.EndSection();
+        }
+
+        private static FieldInfo s_comfortPiecesField;
+        private static bool s_comfortPiecesLooked;
 
         public static HashSet<Piece> GetComfortPieces()
         {
-            FieldInfo field = typeof(Piece).GetField("s_allComfortPieces", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (!s_comfortPiecesLooked)
+            {
+                s_comfortPiecesLooked = true;
+                s_comfortPiecesField = typeof(Piece).GetField("s_allComfortPieces", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            }
+
+            FieldInfo field = s_comfortPiecesField;
             if (field == null)
             {
                 return null;
@@ -226,17 +335,20 @@ namespace ValheimAdminTool.Core
                     s_colorBlock = new MaterialPropertyBlock();
                 }
 
-                s_colorBlock.SetColor("_Color", ColorFor(piece));
-                ring.SetPropertyBlock(s_colorBlock);
-            }
-
-            for (int i = count; i < s_rings.Count; i++)
-            {
-                if (s_rings[i] != null && s_rings[i].gameObject.activeSelf)
+                Color color = ColorFor(piece);
+                while (s_ringColor.Count <= i)
                 {
-                    s_rings[i].gameObject.SetActive(false);
+                    s_ringColor.Add(Color.clear);
+                }
+                if (s_ringColor[i] != color)
+                {
+                    s_ringColor[i] = color;
+                    s_colorBlock.SetColor("_Color", color);
+                    ring.SetPropertyBlock(s_colorBlock);
                 }
             }
+
+            HideRings(count);
         }
 
         private static LineRenderer CreateRing()

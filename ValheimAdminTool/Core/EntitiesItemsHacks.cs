@@ -24,6 +24,8 @@ namespace ValheimAdminTool.Core
 
         private static readonly List<string> s_entityPrefabs = new List<string>();
         private static List<string> s_entityPrefabsFiltered = new List<string>();
+        private static readonly UI.CachedOptions s_prefabNames = new UI.CachedOptions();
+        private static readonly UI.CachedOptions s_levelNames = new UI.CachedOptions();
 
         private static int NameComparator(string a, string b)
         {
@@ -73,10 +75,8 @@ namespace ValheimAdminTool.Core
                 GUILayout.BeginHorizontal();
                 {
                     UI.Controls.FieldLabel("$vt_entities_spawn_entity_name");
-                    string[] prefabs = s_entityPrefabsFiltered != null && s_entityPrefabsFiltered.Count > 0
-                        ? s_entityPrefabsFiltered.ToArray()
-                        : s_entityPrefabs.ToArray();
-                    s_entityPrefabIdx = RGUI.SearchableSelectionPopup(s_entityPrefabIdx, prefabs, ref s_entitySearchTerms);
+                    List<string> source = s_entityPrefabsFiltered != null && s_entityPrefabsFiltered.Count > 0 ? s_entityPrefabsFiltered : s_entityPrefabs;
+                    s_entityPrefabIdx = RGUI.SearchableSelectionPopup(s_entityPrefabIdx, s_prefabNames.Get(source, name => name), ref s_entitySearchTerms);
                     SearchItem(s_entitySearchTerms);
                 }
                 GUILayout.EndHorizontal();
@@ -91,7 +91,7 @@ namespace ValheimAdminTool.Core
                 GUILayout.BeginHorizontal();
                 {
                     UI.Controls.FieldLabel("$vt_entities_spawn_level");
-                    s_entityLevelIdx = RGUI.SelectionPopup(s_entityLevelIdx, s_entityLevels.ToArray());
+                    s_entityLevelIdx = RGUI.SelectionPopup(s_entityLevelIdx, s_levelNames.Get(s_entityLevels, level => level));
                 }
                 GUILayout.EndHorizontal();
 
