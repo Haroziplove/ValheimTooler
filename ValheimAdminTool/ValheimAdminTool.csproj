@@ -164,6 +164,7 @@
     <Compile Include="Core\Extensions\MinimapExtensions.cs" />
     <Compile Include="Core\Extensions\PlayerExtensions.cs" />
     <Compile Include="Core\ItemGiver.cs" />
+    <Compile Include="Core\RecipeData.cs" />
     <Compile Include="Core\RecipeManager.cs" />
     <Compile Include="Core\MiscHacks.cs" />
     <Compile Include="Core\PlayerHacks.cs" />
