@@ -17,17 +17,6 @@ namespace ValheimAdminTool.Patches
             return TargetMethod() != null;
         }
 
-        private static bool Prefix(Player __instance, Recipe recipe)
-        {
-            if (__instance != Player.m_localPlayer)
-            {
-                return true;
-            }
-
-            string key = RecipeManager.KeyFromRecipe(recipe);
-            return !RecipeManager.ShouldBlockAutoLearn(key);
-        }
-
         private static void Postfix(Player __instance, Recipe recipe)
         {
             if (__instance != Player.m_localPlayer)
@@ -56,17 +45,6 @@ namespace ValheimAdminTool.Patches
             return TargetMethod() != null;
         }
 
-        private static bool Prefix(Player __instance, Piece piece)
-        {
-            if (__instance != Player.m_localPlayer)
-            {
-                return true;
-            }
-
-            string key = RecipeManager.KeyFromPiece(piece);
-            return !RecipeManager.ShouldBlockAutoLearn(key);
-        }
-
         private static void Postfix(Player __instance, Piece piece)
         {
             if (__instance != Player.m_localPlayer)
@@ -82,27 +60,4 @@ namespace ValheimAdminTool.Patches
         }
     }
 
-    [HarmonyPatch]
-    class RecipeDiscoverMaterial
-    {
-        private static MethodBase TargetMethod()
-        {
-            return AccessTools.Method(typeof(Player), "AddKnownItem", new[] { typeof(ItemDrop.ItemData) });
-        }
-
-        private static bool Prepare()
-        {
-            return TargetMethod() != null;
-        }
-
-        private static void Prefix(Player __instance, ItemDrop.ItemData item)
-        {
-            if (__instance != Player.m_localPlayer || item == null || item.m_shared == null)
-            {
-                return;
-            }
-
-            RecipeManager.AllowRecipesForNewMaterial(item.m_shared.m_name);
-        }
-    }
 }

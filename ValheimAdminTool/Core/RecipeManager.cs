@@ -336,18 +336,6 @@ namespace ValheimAdminTool.Core
             return s_suppressed.Contains("$" + key);
         }
 
-        public static bool ShouldBlockAutoLearn(string key)
-        {
-            if (IsSuppressed(key))
-            {
-                return true;
-            }
-
-            EnsureCatalog();
-            RecipeEntry entry = FindEntry(key);
-            return entry != null && (entry.manualOnly || !string.IsNullOrEmpty(entry.vendor));
-        }
-
         private static RecipeEntry FindEntry(string key)
         {
             if (string.IsNullOrEmpty(key))
@@ -471,9 +459,6 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            EnsureCatalog();
-            HashSet<string> materials = KnownMaterials(player);
-            SuppressQualified(recipes, materials);
             int count = recipes.Count;
             recipes.Clear();
 
@@ -553,12 +538,6 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            HashSet<string> known = KnownMaterials(Player.m_localPlayer);
-            if (known != null && MaterialKnown(known, material))
-            {
-                return;
-            }
-
             EnsureCatalog();
             for (int i = 0; i < s_catalog.Count; i++)
             {
@@ -630,12 +609,16 @@ namespace ValheimAdminTool.Core
         private static void LearnAllRecipes()
         {
             EnsureCatalog();
-            List<string> keys = new List<string>(s_catalog.Count);
-            for (int i = 0; i < s_catalog.Count; i++)
+            Player player = Player.m_localPlayer;
+            if (player == null)
             {
-                keys.Add(s_catalog[i].key);
+                return;
             }
-            Notify(Player.m_localPlayer, LearnKeys(keys));
+
+            int added = IntroduceWorldItems(player, IndexDrops(), RecipeBiome.Special, true);
+            player.CallMethod("UpdateKnownRecipesList");
+            PersistKnowledge(player);
+            Notify(player, added);
         }
 
         private static void DrawVendorButtons(bool learn)
@@ -694,41 +677,35 @@ namespace ValheimAdminTool.Core
         private static void LearnVendor(string vendorId)
         {
             EnsureCatalog();
-            List<string> keys = new List<string>();
-            for (int i = 0; i < s_catalog.Count; i++)
+            Player player = Player.m_localPlayer;
+            int added = 0;
+            if (player != null && s_learnBiomeItems)
             {
-                if (s_catalog[i].vendor == vendorId && !s_catalog[i].manualOnly)
-                {
-                    keys.Add(s_catalog[i].key);
-                }
+                added = DiscoverVendorItems(player, vendorId);
+                player.CallMethod("UpdateKnownRecipesList");
+                PersistKnowledge(player);
             }
-
-            if (s_learnBiomeItems)
-            {
-                DiscoverVendorItems(vendorId);
-            }
-
-            Notify(Player.m_localPlayer, LearnKeys(keys));
+            Notify(player, added);
         }
 
-        private static void DiscoverVendorItems(string vendorId)
+        private static int DiscoverVendorItems(Player player, string vendorId)
         {
-            Player player = Player.m_localPlayer;
-            HashSet<string> materials = KnownMaterials(player);
-            if (materials == null || s_vendorByKey == null)
+            if (player == null || s_vendorByKey == null)
             {
-                return;
+                return 0;
             }
 
+            Dictionary<string, ItemDrop> drops = IndexDrops();
+            int added = 0;
             foreach (KeyValuePair<string, string> pair in s_vendorByKey)
             {
                 if (pair.Value == vendorId && !string.IsNullOrEmpty(pair.Key) && !pair.Key.ToLowerInvariant().Contains("mysterious"))
                 {
-                    materials.Add(pair.Key);
+                    added += IntroduceNamed(player, drops, pair.Key);
                 }
             }
 
-            PersistKnowledge(player, false);
+            return added;
         }
 
         private static void SelectVisibleVendor(string vendorId)
@@ -949,37 +926,14 @@ namespace ValheimAdminTool.Core
         private static void LearnBiome(RecipeBiome biome)
         {
             EnsureCatalog();
-            List<string> keys = new List<string>();
-            for (int i = 0; i < s_catalog.Count; i++)
-            {
-                if (s_catalog[i].biome == biome && string.IsNullOrEmpty(s_catalog[i].vendor) && !s_catalog[i].manualOnly)
-                {
-                    keys.Add(s_catalog[i].key);
-                }
-            }
-            if (s_learnBiomeItems)
-            {
-                DiscoverBiomeMaterials(biome);
-            }
-            int learned = LearnKeys(keys);
             Player player = Player.m_localPlayer;
-            if (player != null && s_learnBiomeItems)
-            {
-                player.CallMethod("UpdateKnownRecipesList");
-                PersistKnowledge(player);
-            }
-            Notify(player, learned);
-        }
-
-        private static void DiscoverBiomeMaterials(RecipeBiome biome)
-        {
-            Player player = Player.m_localPlayer;
-            HashSet<string> materials = KnownMaterials(player);
-            if (materials == null)
+            if (player == null)
             {
                 return;
             }
 
+            Dictionary<string, ItemDrop> drops = IndexDrops();
+            int added = 0;
             for (int i = 0; i < s_catalog.Count; i++)
             {
                 RecipeEntry entry = s_catalog[i];
@@ -990,49 +944,134 @@ namespace ValheimAdminTool.Core
 
                 for (int n = 0; n < entry.materials.Count; n++)
                 {
-                    if (!string.IsNullOrEmpty(entry.materials[n]))
+                    if (IsBlockedMaterial(entry.materials[n]))
                     {
-                        materials.Add(entry.materials[n]);
+                        continue;
                     }
+
+                    added += IntroduceNamed(player, drops, entry.materials[n]);
                 }
             }
 
-            if (ObjectDB.instance != null && ObjectDB.instance.m_items != null)
+            if (s_learnBiomeItems)
             {
-                foreach (GameObject prefab in ObjectDB.instance.m_items)
-                {
-                    if (prefab == null)
-                    {
-                        continue;
-                    }
-
-                    ItemDrop drop = prefab.GetComponent<ItemDrop>();
-                    if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null)
-                    {
-                        continue;
-                    }
-
-                    string name = drop.m_itemData.m_shared.m_name;
-                    if (string.IsNullOrEmpty(name))
-                    {
-                        continue;
-                    }
-
-                    if (VendorFor(name) != null || name.ToLowerInvariant().Contains("mysterious") || ContainsAny(name.ToLowerInvariant(), "barber", "ironpit", "iron_pit", "firepit_iron"))
-                    {
-                        continue;
-                    }
-
-                    string display = Localization.instance != null ? Localization.instance.Localize(name) : name;
-                    RecipeBiome itemBiome = Classify("none", 1, prefab.name + " " + name + " " + display);
-                    if (itemBiome == biome)
-                    {
-                        materials.Add(name);
-                    }
-                }
+                added += IntroduceWorldItems(player, drops, biome, false);
             }
 
-            PersistKnowledge(player, false);
+            player.CallMethod("UpdateKnownRecipesList");
+            PersistKnowledge(player);
+            Notify(player, added);
+        }
+
+        private static int IntroduceWorldItems(Player player, Dictionary<string, ItemDrop> drops, RecipeBiome biome, bool anyBiome)
+        {
+            int added = 0;
+            foreach (KeyValuePair<string, ItemDrop> pair in drops)
+            {
+                ItemDrop drop = pair.Value;
+                if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null)
+                {
+                    continue;
+                }
+
+                string name = drop.m_itemData.m_shared.m_name;
+                string prefab = drop.name;
+                if (IsBlockedMaterial(name) || IsBlockedMaterial(prefab))
+                {
+                    continue;
+                }
+
+                if (!anyBiome)
+                {
+                    string display = Localization.instance != null ? Localization.instance.Localize(name) : name;
+                    if (Classify("none", 1, prefab + " " + name + " " + display) != biome)
+                    {
+                        continue;
+                    }
+                }
+
+                added += IntroduceDrop(player, drop);
+            }
+
+            return added;
+        }
+
+        private static bool IsBlockedMaterial(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return true;
+            }
+
+            string hay = name.ToLowerInvariant();
+            if (hay.Contains("mysterious"))
+            {
+                return true;
+            }
+
+            if (ContainsAny(hay, "cape_odin", "capeodin", "helmet_odin", "tankard_odin", "tankardodin", "fishinghat", "witchhat", "barber", "ironpit", "iron_pit", "firepit_iron"))
+            {
+                return true;
+            }
+
+            return VendorFor(name) != null;
+        }
+
+        private static Dictionary<string, ItemDrop> IndexDrops()
+        {
+            Dictionary<string, ItemDrop> map = new Dictionary<string, ItemDrop>(StringComparer.OrdinalIgnoreCase);
+            if (ObjectDB.instance == null || ObjectDB.instance.m_items == null)
+            {
+                return map;
+            }
+
+            foreach (GameObject prefab in ObjectDB.instance.m_items)
+            {
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                ItemDrop drop = prefab.GetComponent<ItemDrop>();
+                if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null)
+                {
+                    continue;
+                }
+
+                RememberKey(map, drop.m_itemData.m_shared.m_name, drop);
+                RememberKey(map, prefab.name, drop);
+            }
+
+            return map;
+        }
+
+        private static int IntroduceNamed(Player player, Dictionary<string, ItemDrop> drops, string name)
+        {
+            ItemDrop drop;
+            if (!TryGetMapped(drops, name, out drop))
+            {
+                return 0;
+            }
+
+            return IntroduceDrop(player, drop);
+        }
+
+        private static int IntroduceDrop(Player player, ItemDrop drop)
+        {
+            if (player == null || drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null)
+            {
+                return 0;
+            }
+
+            string name = drop.m_itemData.m_shared.m_name;
+            HashSet<string> known = KnownMaterials(player);
+            if (known != null && MaterialKnown(known, name))
+            {
+                return 0;
+            }
+
+            player.CallMethod("AddKnownItem", drop.m_itemData);
+            return 1;
         }
 
         private static void SelectVisibleBiome(RecipeBiome biome)
@@ -1083,9 +1122,33 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
-            int added = LearnKeys(s_selected);
+            Player player = Player.m_localPlayer;
+            int added = 0;
+            if (player != null)
+            {
+                Dictionary<string, ItemDrop> drops = IndexDrops();
+                foreach (string key in s_selected)
+                {
+                    RecipeEntry entry;
+                    if (!s_catalogByKey.TryGetValue(key, out entry) || entry.materials == null)
+                    {
+                        continue;
+                    }
+
+                    for (int n = 0; n < entry.materials.Count; n++)
+                    {
+                        if (!IsBlockedMaterial(entry.materials[n]))
+                        {
+                            added += IntroduceNamed(player, drops, entry.materials[n]);
+                        }
+                    }
+                }
+
+                player.CallMethod("UpdateKnownRecipesList");
+                PersistKnowledge(player);
+            }
             s_selected.Clear();
-            Notify(Player.m_localPlayer, added);
+            Notify(player, added);
         }
 
         private static void ForgetAllStations()
@@ -1207,42 +1270,41 @@ namespace ValheimAdminTool.Core
             Notify(player, removed);
         }
 
-        private static int LearnKeys(IEnumerable<string> keys)
+        private static void RememberKey<T>(Dictionary<string, T> map, string key, T value)
         {
-            Player player = Player.m_localPlayer;
-            HashSet<string> recipes = KnownRecipes(player);
-            if (recipes == null || keys == null)
+            if (string.IsNullOrEmpty(key) || value == null || map.ContainsKey(key))
             {
-                return 0;
+                return;
             }
 
-            int added = 0;
-            foreach (string key in keys)
+            map.Add(key, value);
+            if (key.StartsWith("$"))
             {
-                if (string.IsNullOrEmpty(key))
+                string bare = key.Substring(1);
+                if (!map.ContainsKey(bare))
                 {
-                    continue;
+                    map.Add(bare, value);
                 }
+            }
+            else if (!map.ContainsKey("$" + key))
+            {
+                map.Add("$" + key, value);
+            }
+        }
 
-                s_suppressed.Remove(key);
-                if (key.StartsWith("$"))
-                {
-                    s_suppressed.Remove(key.Substring(1));
-                }
-                else
-                {
-                    s_suppressed.Remove("$" + key);
-                }
-                if (recipes.Add(key))
-                {
-                    added++;
-                }
-                NoteLearned(key);
+        private static bool TryGetMapped<T>(Dictionary<string, T> map, string key, out T value)
+        {
+            if (map.TryGetValue(key, out value))
+            {
+                return true;
             }
 
-            s_lastKnownCount = -1;
-            PersistKnowledge(player);
-            return added;
+            if (key.StartsWith("$"))
+            {
+                return map.TryGetValue(key.Substring(1), out value);
+            }
+
+            return map.TryGetValue("$" + key, out value);
         }
 
         private static void PersistKnowledge(Player player, bool refreshPieces = true)
@@ -1253,11 +1315,6 @@ namespace ValheimAdminTool.Core
             }
 
             RefreshCraftingPanel();
-
-            if (Game.instance != null)
-            {
-                Game.instance.SavePlayerProfile(false, false);
-            }
         }
 
         private static void RefreshCraftingPanel()
@@ -1508,6 +1565,12 @@ namespace ValheimAdminTool.Core
                     continue;
                 }
 
+                string prefabName = prefab.name.ToLowerInvariant();
+                if (prefabName.Contains("portal") && (prefabName.Contains("unconnected") || prefabName.Contains("connected") || prefabName.Contains("censored") || prefabName.Contains("dev")))
+                {
+                    continue;
+                }
+
                 if (piecePrefabs.Contains(prefab) || IsSpecialText(PieceText(piece, prefab)))
                 {
                     piecePrefabs.Add(prefab);
@@ -1567,6 +1630,13 @@ namespace ValheimAdminTool.Core
                 return;
             }
 
+            if (ContainsAny(hay, "capeodin", "cape_odin", "helmet_odin", "tankardodin", "tankard_odin", "fishinghat", "fishing_hat", "witchhat", "pointy hat", "fishing hat"))
+            {
+                entry.manualOnly = true;
+                entry.vendor = null;
+                return;
+            }
+
             if (string.IsNullOrEmpty(entry.vendor) && ContainsAny(hay, "barber", "ironpit", "iron_pit", "firepit_iron", "ironfirepit", "iron fire pit", "iron firepit", "iron pit"))
             {
                 entry.vendor = "Hildir";
@@ -1575,6 +1645,16 @@ namespace ValheimAdminTool.Core
                     s_vendorLabel["Hildir"] = "Hildir";
                     s_vendorOrder.Add("Hildir");
                 }
+            }
+
+            if (string.IsNullOrEmpty(entry.vendor) && ContainsAny(hay, "candlewick", "candle_wick", "piece_candle", "item_candle", "meadbasehasty", "meadbasebzerker", "meadbasestrength", "meadbaselightfoot", "meadbaseswimmer", "meadbasetamer", "meadbasebugrepellent", "ratatosk", "vananidir", "animal whisper", "troll endurance"))
+            {
+                entry.vendor = FindVendorId("witch", "bog", "Bog Witch");
+            }
+
+            if (string.IsNullOrEmpty(entry.vendor) && ContainsAny(hay, "barrelring", "barrel_ring", "barrelhoop", "chestbarrel", "piece_barrel", "item_barrel"))
+            {
+                entry.vendor = FindVendorId("haldor", "merchant", "Haldor");
             }
 
             if (!string.IsNullOrEmpty(entry.vendor))
@@ -1602,14 +1682,50 @@ namespace ValheimAdminTool.Core
             {
                 entry.biome = RecipeBiome.Ashlands;
             }
+            else if (ContainsAny(hay, "bonfire", "piece_bonfire"))
+            {
+                entry.biome = RecipeBiome.Swamp;
+            }
+            else if (ContainsAny(hay, "frostner", "mace_silver", "macesilver"))
+            {
+                entry.biome = RecipeBiome.Mountains;
+            }
             else if (ContainsAny(hay, "entrails") && (entry.biome == RecipeBiome.Meadows || entry.biome == RecipeBiome.BlackForest || entry.biome == RecipeBiome.Special))
             {
                 entry.biome = RecipeBiome.Swamp;
             }
         }
 
+        private static string FindVendorId(string tokenA, string tokenB, string fallbackLabel)
+        {
+            for (int i = 0; i < s_vendorOrder.Count; i++)
+            {
+                string id = s_vendorOrder[i];
+                string label = VendorLabel(id).ToLowerInvariant();
+                string low = id.ToLowerInvariant();
+                if (low.Contains(tokenA) || low.Contains(tokenB) || label.Contains(tokenA) || label.Contains(tokenB))
+                {
+                    return id;
+                }
+            }
+
+            if (!s_vendorLabel.ContainsKey(fallbackLabel))
+            {
+                s_vendorLabel[fallbackLabel] = fallbackLabel;
+                s_vendorOrder.Add(fallbackLabel);
+            }
+
+            return fallbackLabel;
+        }
+
         private static RecipeBiome ClassifyRecipe(Recipe recipe, string display)
         {
+            RecipeBiome named = FoodBiome(KeyFromRecipe(recipe));
+            if (named != RecipeBiome.Special)
+            {
+                return named;
+            }
+
             string station = StationText(recipe.m_craftingStation);
             int level = recipe.m_minStationLevel;
             string text = RecipeText(recipe, display);
@@ -1709,18 +1825,152 @@ namespace ValheimAdminTool.Core
             }
         }
 
-        private static RecipeBiome Classify(string station, int level, string text)
+        private static void AddFoodRecipes(RecipeBiome biome, List<string> keys)
         {
-            string haystack = ((station ?? "") + " " + (text ?? "")).ToLowerInvariant();
-            if (IsSpecialText(haystack))
+            if (ObjectDB.instance == null || ObjectDB.instance.m_recipes == null)
+            {
+                return;
+            }
+
+            int found = 0;
+            foreach (Recipe recipe in ObjectDB.instance.m_recipes)
+            {
+                if (recipe == null)
+                {
+                    continue;
+                }
+
+                string station = StationText(recipe.m_craftingStation);
+                string key = KeyFromRecipe(recipe);
+                RecipeBiome named = FoodBiome(key);
+                if (!IsFoodCauldron(station) && named == RecipeBiome.Special)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(key) || keys.Contains(key))
+                {
+                    continue;
+                }
+
+                RecipeEntry entry = FindEntry(key);
+                if (entry != null && (entry.manualOnly || !string.IsNullOrEmpty(entry.vendor)))
+                {
+                    continue;
+                }
+
+                string display = entry != null ? entry.displayName : "";
+                RecipeBiome chosen = named != RecipeBiome.Special ? named : ClassifyRecipe(recipe, display);
+                if (key.IndexOf("queensjam", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    Debug.Log("VAT queensjam station=" + station + " enabled=" + recipe.m_enabled + " biome=" + chosen);
+                }
+                if (chosen == biome)
+                {
+                    keys.Add(key);
+                    found++;
+                }
+            }
+
+            if (found > 0)
+            {
+                Debug.Log("VAT food recipes " + biome + " " + found);
+            }
+        }
+
+        private static RecipeBiome FoodBiome(string key)
+        {
+            if (string.IsNullOrEmpty(key))
             {
                 return RecipeBiome.Special;
             }
-            if (ContainsAny(haystack, "deepnorth", "deep_north", "deep north", "fimbul", "northlands", "bloodgold", "frostcore", "frostfoundry", "frostkiln", "frigid", "jotun", "elaking", "timberwood", "timber wood", "moose", "seal", "nornthread", "frozenfuel", "frozenking", "crownjewel", "jotunpuff", "jotunbane", "spicedeepnorth", "feastdeepnorth", "liquidfrost", "liquid core", "liquidcore", "liquid_core", "frostfire", "frostorb", "frostwood", "woodfrost", "orbofahri", "spiritcaller", "thunderblood", "stafficeshard", "icecube", "item_ice", "item_mold", "mold_", "mould", "barka", "gammeltroll", "gammel", "hexen", "krigen", "captive"))
+
+            string name = key.ToLowerInvariant();
+            if (ContainsAny(name, "queensjam", "necktail", "boarjerky", "mincedmeat", "feastmeadows", "boar_meat_cooked"))
+            {
+                return RecipeBiome.Meadows;
+            }
+            if (ContainsAny(name, "carrotsoup", "deerstew", "feastblackforest"))
+            {
+                return RecipeBiome.BlackForest;
+            }
+            if (ContainsAny(name, "turnipstew", "sausages", "blacksoup", "feastswamps"))
+            {
+                return RecipeBiome.Swamp;
+            }
+            if (ContainsAny(name, "onionsoup", "wolf_skewer", "wolfjerky", "eyescream", "feastmountains"))
+            {
+                return RecipeBiome.Mountains;
+            }
+            if (ContainsAny(name, "serpentstew", "fishsoup", "feastoceans"))
+            {
+                return RecipeBiome.Ocean;
+            }
+            if (ContainsAny(name, "bloodpudding", "loxpie", "fishandbread", "piquantpie", "feastplains"))
+            {
+                return RecipeBiome.Plains;
+            }
+            if (ContainsAny(name, "meatplatter", "magicallystuffed", "misthare", "feastmistlands", "seekeraspic"))
+            {
+                return RecipeBiome.Mistlands;
+            }
+            if (ContainsAny(name, "feastashlands", "fierysvin", "vineberry", "roastedcrust"))
+            {
+                return RecipeBiome.Ashlands;
+            }
+            if (ContainsAny(name, "sealsoup", "kalechips", "bakedpoteitr", "feastdeepnorth", "oatmeallingon"))
             {
                 return RecipeBiome.DeepNorth;
             }
-            if (ContainsAny(haystack, "flametal", "asksvin", "charred", "ashland", "volture", "morgen", "berserkir", "grausten", "sulfur", "bonemaw", "ashwood", "ember", "fader", "lavai", "putrid", "celestial", "blackcore", "black core", "ceramicplate", "ceramic plate", "ceramic", "shieldcore", "shield core", "proustite", "fiddlehead", "askblod", "bloodstone", "iolite"))
+
+            return RecipeBiome.Special;
+        }
+
+        private static bool IsFoodCauldron(string station)
+        {
+            if (string.IsNullOrEmpty(station))
+            {
+                return false;
+            }
+
+            string name = station.ToLowerInvariant();
+            if (name.Contains("mead") || name.Contains("cookingstation_iron"))
+            {
+                return false;
+            }
+
+            return name.Contains("cauldron") || name.Contains("oven") || name.Contains("cookingstation");
+        }
+
+        private static RecipeBiome Classify(string station, int level, string text)
+        {
+            if (IsSpecialText(((station ?? "") + " " + (text ?? "")).ToLowerInvariant()))
+            {
+                return RecipeBiome.Special;
+            }
+
+            RecipeBiome fromStation = FromStation(station, level);
+            RecipeBiome fromText = MatchText(text);
+            if (fromText == RecipeBiome.Special)
+            {
+                return fromStation;
+            }
+            if (fromStation == RecipeBiome.Special)
+            {
+                return fromText;
+            }
+
+            return LaterBiome(fromText, fromStation);
+        }
+
+        private static RecipeBiome MatchText(string text)
+        {
+            string haystack = (text ?? "").ToLowerInvariant();
+            if (ContainsAny(haystack, "deepnorth", "deep_north", "deep north", "fimbul", "northlands", "bloodgold", "frostcore", "frostfoundry", "frostkiln", "frigid", "jotun", "elaking", "timberwood", "timber wood", "moose", "seal", "nornthread", "frozenfuel", "frozenking", "crownjewel", "jotunpuff", "jotunbane", "spicedeepnorth", "feastdeepnorth", "liquidfrost", "liquid core", "liquidcore", "liquid_core", "frostfire", "frostorb", "frostwood", "woodfrost", "orbofahri", "spiritcaller", "thunderblood", "stafficeshard", "icecube", "item_ice", "item_mold", "mold_", "mould", "barka", "gammeltroll", "gammel", "hexen", "krigen", "captive", "kale", "item_oat", "oatseed", "oatflour", "oatmilk", "oatmeal", "poteitr", "ooze_mork", "morkhalla", "dead pulp", "deadpulp"))
+            {
+                return RecipeBiome.DeepNorth;
+            }
+            if (ContainsAny(haystack, "flametal", "asksvin", "charred", "ashland", "volture", "morgen", "berserkir", "grausten", "sulfur", "bonemaw", "ashwood", "ember", "fader", "lavai", "putrid", "celestial", "blackcore", "black core", "ceramicplate", "ceramic plate", "ceramic", "shieldcore", "shield core", "proustite", "fiddlehead", "askblod", "bloodstone", "iolite", "ashvine", "vineash", "vineberry"))
             {
                 return RecipeBiome.Ashlands;
             }
@@ -1749,17 +1999,49 @@ namespace ValheimAdminTool.Core
                 return RecipeBiome.BlackForest;
             }
 
-            RecipeBiome fromStation = FromStation(station, level);
-            if (fromStation != RecipeBiome.Special)
-            {
-                return fromStation;
-            }
             if (ContainsAny(haystack, "flint", "leather", "deer", "boar", "neck", "antler", "crude", "meadow", "raspberry", "blueberry", "honey", "mushroom", "dandelion", "rawmeat", "raw meat", "necktail", "neck tail", "deerhide", "deer hide", "resin", "campfire", "wood", "stone"))
             {
                 return RecipeBiome.Meadows;
             }
 
             return RecipeBiome.Special;
+        }
+
+        private static int BiomeRank(RecipeBiome biome)
+        {
+            switch (biome)
+            {
+                case RecipeBiome.Meadows:
+                    return 0;
+                case RecipeBiome.BlackForest:
+                    return 1;
+                case RecipeBiome.Swamp:
+                    return 2;
+                case RecipeBiome.Mountains:
+                    return 3;
+                case RecipeBiome.Plains:
+                    return 4;
+                case RecipeBiome.Ocean:
+                    return 4;
+                case RecipeBiome.Mistlands:
+                    return 5;
+                case RecipeBiome.Ashlands:
+                    return 6;
+                case RecipeBiome.DeepNorth:
+                    return 7;
+                default:
+                    return -1;
+            }
+        }
+
+        private static RecipeBiome LaterBiome(RecipeBiome textBiome, RecipeBiome stationBiome)
+        {
+            if (BiomeRank(textBiome) >= BiomeRank(stationBiome))
+            {
+                return textBiome;
+            }
+
+            return stationBiome;
         }
 
         private static RecipeBiome FromStation(string station, int level)
@@ -1778,8 +2060,12 @@ namespace ValheimAdminTool.Core
             {
                 return RecipeBiome.Plains;
             }
-            if (name.Contains("cauldron") || name.Contains("oven"))
+            if ((name.Contains("cauldron") || name.Contains("oven")) && !name.Contains("mead"))
             {
+                if (level >= 7)
+                {
+                    return RecipeBiome.Ashlands;
+                }
                 if (level >= 6)
                 {
                     return RecipeBiome.Mistlands;
